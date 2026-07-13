@@ -8,25 +8,25 @@ import { fadeIn } from "@/utils/animations";
 export default function Contact() {
   const contactDetails = [
     {
-      icon: <Mail className="text-neutral-500" size={20} />,
+      icon: <Mail size={18} />,
       label: "General Inquiries & Bookings",
       value: "info@gvenketram.com",
       href: "mailto:info@gvenketram.com",
     },
     {
-      icon: <Phone className="text-neutral-500" size={20} />,
+      icon: <Phone size={18} />,
       label: "Studio Production Line",
       value: "+1 (555) 019-2834",
       href: "tel:+15550192834",
     },
     {
-      icon: <MapPin className="text-neutral-500" size={20} />,
+      icon: <MapPin size={18} />,
       label: "Main Studio Address",
       value: "284 Mercer St, Soho, New York, NY 10003",
       href: "https://maps.google.com",
     },
     {
-      icon: <Clock className="text-neutral-500" size={20} />,
+      icon: <Clock size={18} />,
       label: "Response Times",
       value: "Mon – Fri: 09:00 AM – 06:00 PM EST",
       href: null,
@@ -46,11 +46,11 @@ export default function Contact() {
             className="lg:col-span-5 space-y-10"
           >
             <div>
-              <span className="text-xs uppercase tracking-[0.3em] text-neutral-500 font-semibold mb-2 block">
+              <span className="text-xs uppercase tracking-[0.3em] text-[#A97C5B] font-semibold mb-2 block">
                 Let's Collaborate
               </span>
               <h1 className="text-4xl sm:text-5xl font-light uppercase tracking-widest text-[#1c1a17] leading-tight font-serif">
-                Get In <span className="font-semibold text-neutral-500 font-serif">Touch</span>
+                Get In <span className="font-semibold text-[#A97C5B] font-serif italic">Touch</span>
               </h1>
             </div>
 
@@ -61,11 +61,11 @@ export default function Contact() {
             <div className="space-y-6 pt-4 border-t border-[#e6e2d8]">
               {contactDetails.map((detail, idx) => (
                 <div key={idx} className="flex items-start space-x-4">
-                  <div className="p-2 bg-white border border-[#e6e2d8] rounded-lg shadow-sm">
+                  <div className="p-2.5 bg-[#FAF8F5] border border-[#e6e2d8] text-[#A97C5B] rounded-lg">
                     {detail.icon}
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase tracking-wider text-neutral-500 block mb-1 font-semibold">
+                    <span className="text-[10px] uppercase tracking-[0.15em] text-[#A97C5B] block mb-1 font-semibold">
                       {detail.label}
                     </span>
                     {detail.href ? (
@@ -73,7 +73,7 @@ export default function Contact() {
                         href={detail.href}
                         target={detail.href.startsWith("http") ? "_blank" : undefined}
                         rel={detail.href.startsWith("http") ? "noreferrer" : undefined}
-                        className="text-sm font-light text-neutral-800 hover:text-black hover:font-normal transition-all duration-300"
+                        className="text-sm font-light text-neutral-800 hover:text-[#A97C5B] transition-all duration-300"
                       >
                         {detail.value}
                       </a>

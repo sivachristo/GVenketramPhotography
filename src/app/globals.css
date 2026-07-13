@@ -14,6 +14,10 @@
   --font-serif: var(--font-serif);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -47,3 +51,8 @@ body {
   background-color: #1c1a17;
   color: #f5f2eb;
 }
+
+@utility text-shadow-editorial {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+

@@ -87,16 +87,16 @@ export default function ContactForm() {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto p-8 rounded-2xl bg-[#faf8f5] border border-[#e6e2d8] shadow-lg">
+    <div className="w-full max-w-xl mx-auto p-8 rounded-none bg-[#faf8f5] border border-[#e6e2d8] shadow-sm">
       <h2 className="text-xl uppercase tracking-[0.2em] text-[#1c1a17] font-light mb-8 font-serif">
-        Send a Message
+        Send a <span className="font-semibold text-[#A97C5B] font-serif italic">Message</span>
       </h2>
 
       {status === "success" && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm flex items-center space-x-3"
+          className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-none text-emerald-800 text-sm flex items-center space-x-3"
         >
           <CheckCircle2 size={18} className="text-emerald-600" />
           <span>Your message was sent successfully! We will reach out shortly.</span>
@@ -107,7 +107,7 @@ export default function ContactForm() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm flex items-center space-x-3"
+          className="mb-8 p-4 bg-rose-50 border border-rose-200 rounded-none text-rose-800 text-sm flex items-center space-x-3"
         >
           <AlertCircle size={18} className="text-rose-600" />
           <span>Failed to send the message. Please try again later.</span>
@@ -117,7 +117,7 @@ export default function ContactForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name Field */}
         <div className="flex flex-col space-y-2">
-          <label htmlFor="name" className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+          <label htmlFor="name" className="text-xs uppercase tracking-[0.15em] text-[#A97C5B] font-semibold">
             Full Name *
           </label>
           <input
@@ -128,8 +128,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="John Doe"
             disabled={status === "loading"}
-            className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-[#1c1a17] transition-colors duration-300 ${
-              errors.name ? "border-rose-400 focus:ring-rose-500" : "border-[#e6e2d8]"
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
+              errors.name ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
             }`}
           />
           {errors.name && <span className="text-[11px] text-rose-600">{errors.name}</span>}
@@ -137,7 +137,7 @@ export default function ContactForm() {
 
         {/* Email Field */}
         <div className="flex flex-col space-y-2">
-          <label htmlFor="email" className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+          <label htmlFor="email" className="text-xs uppercase tracking-[0.15em] text-[#A97C5B] font-semibold">
             Email Address *
           </label>
           <input
@@ -148,8 +148,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="john@example.com"
             disabled={status === "loading"}
-            className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-[#1c1a17] transition-colors duration-300 ${
-              errors.email ? "border-rose-400 focus:ring-rose-500" : "border-[#e6e2d8]"
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
+              errors.email ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
             }`}
           />
           {errors.email && <span className="text-[11px] text-rose-600">{errors.email}</span>}
@@ -157,7 +157,7 @@ export default function ContactForm() {
 
         {/* Phone Field */}
         <div className="flex flex-col space-y-2">
-          <label htmlFor="phone" className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+          <label htmlFor="phone" className="text-xs uppercase tracking-[0.15em] text-[#A97C5B] font-semibold">
             Phone Number (Optional)
           </label>
           <input
@@ -168,8 +168,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="+1 (555) 123-4567"
             disabled={status === "loading"}
-            className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-[#1c1a17] transition-colors duration-300 ${
-              errors.phone ? "border-rose-400 focus:ring-rose-500" : "border-[#e6e2d8]"
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
+              errors.phone ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
             }`}
           />
           {errors.phone && <span className="text-[11px] text-rose-600">{errors.phone}</span>}
@@ -177,19 +177,19 @@ export default function ContactForm() {
 
         {/* Message Field */}
         <div className="flex flex-col space-y-2">
-          <label htmlFor="message" className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">
+          <label htmlFor="message" className="text-xs uppercase tracking-[0.15em] text-[#A97C5B] font-semibold">
             Message *
           </label>
           <textarea
             id="message"
             name="message"
-            rows="5"
+            rows="4"
             value={formData.message}
             onChange={handleChange}
             placeholder="Tell us about your project or inquiry..."
             disabled={status === "loading"}
-            className={`w-full px-4 py-3 bg-white border rounded-lg text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-[#1c1a17] transition-colors duration-300 resize-none ${
-              errors.message ? "border-rose-400 focus:ring-rose-500" : "border-[#e6e2d8]"
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 resize-none rounded-none ${
+              errors.message ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
             }`}
           />
           {errors.message && <span className="text-[11px] text-rose-600">{errors.message}</span>}
@@ -199,7 +199,7 @@ export default function ContactForm() {
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full flex items-center justify-center space-x-2 py-3 px-6 bg-[#1c1a17] hover:bg-[#2d2b28] text-[#f5f2eb] font-semibold rounded-lg text-sm transition-all duration-300 uppercase tracking-widest cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center space-x-2 py-3.5 px-6 bg-[#1c1a17] hover:bg-[#A97C5B] text-[#f5f2eb] font-semibold rounded-none text-sm transition-all duration-300 uppercase tracking-widest cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span>{status === "loading" ? "Sending..." : "Submit Inquiry"}</span>
           {status !== "loading" && <Send size={14} />}
