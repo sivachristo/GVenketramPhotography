@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "G-Venketram Photography | Premium Portfolio",
-  description: "High-end fashion, jewellery, art, and advertising photography by G-Venketram Photography.",
+  title: "G Venket Ram Photography | Premium Portfolio",
+  description: "High-end fashion, jewellery, art, and advertising photography by G Venket Ram Photography.",
 };
 
 export default function RootLayout({ children }) {
