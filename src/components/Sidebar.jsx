@@ -58,7 +58,7 @@ export default function Sidebar({ isOpen, onClose, navLinks }) {
               {/* Header */}
               <div className="flex items-center justify-between mb-12">
                 <span className="font-serif text-sm font-semibold tracking-[0.1em] text-[#1c1a17] uppercase flex items-baseline">
-                  G-VENKETRAM<span className="ml-1 font-sans text-[8px] font-light tracking-widest text-neutral-400">PHOTO</span>
+                  G VENKET RAM<span className="ml-1 font-sans text-[8px] font-light tracking-widest text-neutral-400">PHOTO</span>
                 </span>
                 <button
                   onClick={onClose}

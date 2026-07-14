@@ -66,7 +66,7 @@ export default function Navbar() {
               href="/" 
               className="group flex items-baseline uppercase"
             >
-              <span className={logoTextClass}>G-VENKETRAM</span>
+              <span className={logoTextClass}>G VENKET RAM</span>
               <span className={logoSubTextClass}>PHOTOGRAPHY</span>
             </Link>
           </div>

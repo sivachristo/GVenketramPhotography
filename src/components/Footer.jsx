@@ -8,7 +8,7 @@ export default function Footer() {
         {/* Left Section */}
         <div className="flex flex-col items-center md:items-start space-y-2">
           <p className="text-xs uppercase tracking-[0.2em] text-[#1c1a17]">
-            <span className="font-serif font-semibold">G-VENKETRAM</span> <span className="font-sans font-light text-[9px] text-neutral-500">PHOTOGRAPHY</span>
+            <span className="font-serif font-semibold">G VENKET RAM</span> <span className="font-sans font-light text-[9px] text-neutral-500">PHOTOGRAPHY</span>
           </p>
           <p className="text-xs text-neutral-400">
             © {new Date().getFullYear()} G Venket Ram Photography. All rights reserved.
