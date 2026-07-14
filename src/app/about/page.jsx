@@ -5,12 +5,7 @@ import { motion } from "framer-motion";
 import { fadeIn } from "@/utils/animations";
 
 export default function About() {
-  const stats = [
-    { label: "Years of Craft", value: "12+" },
-    { label: "Global Exhibitions", value: "24" },
-    { label: "Editorial Covers", value: "45+" },
-    { label: "Industry Awards", value: "15" },
-  ];
+
 
   const publications = [
     "Vogue Italia",
@@ -57,19 +52,7 @@ export default function About() {
               Born with an innate fascination for shadows and human expression, he studied fine art and visual composition before establishing his production studio. His work bridges the divide between commercial high-fashion campaigns and raw documentary art, seeking to isolate fleeting moments of pure poise and transition.
             </p>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 py-8 border-y border-[#e6e2d8]">
-              {stats.map((stat) => (
-                <div key={stat.label} className="space-y-1">
-                  <span className="text-3xl sm:text-4xl font-light text-[#A97C5B] block font-serif italic">
-                    {stat.value}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-[0.15em] text-neutral-500 block font-medium">
-                    {stat.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+
 
             {/* Publications */}
             <div className="space-y-4">

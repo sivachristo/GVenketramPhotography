@@ -46,9 +46,6 @@ export default function Contact() {
             className="lg:col-span-5 space-y-10"
           >
             <div>
-              <span className="text-xs uppercase tracking-[0.3em] text-[#A97C5B] font-semibold mb-2 block">
-                Let's Collaborate
-              </span>
               <h1 className="text-4xl sm:text-5xl font-light uppercase tracking-widest text-[#1c1a17] leading-tight font-serif">
                 Get In <span className="font-semibold text-[#A97C5B] font-serif italic">Touch</span>
               </h1>
