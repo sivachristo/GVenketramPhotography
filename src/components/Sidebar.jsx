@@ -102,10 +102,15 @@ export default function Sidebar({ isOpen, onClose, navLinks }) {
                   <Mail size={16} className="text-neutral-400" />
                   <span>info@gvenketram.com</span>
                 </div>
-                <div className="flex items-center space-x-3 text-sm text-neutral-500">
+                <a
+                  href="https://wa.me/919940069697"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-3 text-sm text-neutral-500 hover:text-[#A97C5B] transition-colors"
+                >
                   <Phone size={16} className="text-neutral-400" />
-                  <span>+1 (555) 019-2834</span>
-                </div>
+                  <span>+91 99400 69697</span>
+                </a>
                 <div className="flex items-center space-x-3 text-sm text-neutral-500">
                   <MapPin size={16} className="text-neutral-400" />
                   <span>New York, NY</span>

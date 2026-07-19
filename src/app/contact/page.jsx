@@ -15,9 +15,9 @@ export default function Contact() {
     },
     {
       icon: <Phone size={18} />,
-      label: "Studio Production Line",
-      value: "+1 (555) 019-2834",
-      href: "tel:+15550192834",
+      label: "Studio Phone & WhatsApp",
+      value: "+91 99400 69697",
+      href: "https://wa.me/919940069697",
     },
     {
       icon: <MapPin size={18} />,

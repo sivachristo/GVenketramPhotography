@@ -15,6 +15,7 @@ export default function ContactForm() {
 
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle"); // idle, loading, success, error
+  const [lastWhatsappUrl, setLastWhatsappUrl] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,7 +29,7 @@ export default function ContactForm() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required.";
-    
+
     if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -53,6 +54,20 @@ export default function ContactForm() {
 
     setStatus("loading");
 
+    // WhatsApp formatting
+    const whatsappNumber = "919940069697"; // 9940069697 with country code +91
+    const formattedText = `*G-Venket ram website Enquiry*\n\n` +
+      `*Name:* ${formData.name}\n` +
+      `*Email:* ${formData.email}\n` +
+      `*Phone:* ${formData.phone || "Not provided"}\n\n` +
+      `*Message:*\n${formData.message}`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(formattedText)}`;
+    setLastWhatsappUrl(whatsappUrl);
+
+    // Open WhatsApp immediately in a new tab to avoid popup blockers
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
     // EmailJS credentials
     const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
     const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
@@ -75,14 +90,16 @@ export default function ContactForm() {
         setFormData({ name: "", email: "", phone: "", message: "" });
       } catch (err) {
         console.error("EmailJS Error:", err);
-        setStatus("error");
+        // Even if EmailJS fails, the WhatsApp window was opened so we show success
+        setStatus("success");
+        setFormData({ name: "", email: "", phone: "", message: "" });
       }
     } else {
-      // Simulation mode for UI demo when keys are not defined
+      // Simulate delay for smooth UI transition
       setTimeout(() => {
         setStatus("success");
         setFormData({ name: "", email: "", phone: "", message: "" });
-      }, 1500);
+      }, 1000);
     }
   };
 
@@ -96,10 +113,23 @@ export default function ContactForm() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-none text-emerald-800 text-sm flex items-center space-x-3"
+          className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-none text-emerald-800 text-sm flex flex-col space-y-2"
         >
-          <CheckCircle2 size={18} className="text-emerald-600" />
-          <span>Your message was sent successfully! We will reach out shortly.</span>
+          <div className="flex items-center space-x-3">
+            <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">Message prepared! Opening WhatsApp...</span>
+          </div>
+          <p className="text-xs text-neutral-600 pl-7">
+            If the WhatsApp tab didn't open automatically, please{" "}
+            <a
+              href={lastWhatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#A97C5B] font-semibold underline hover:text-[#1c1a17]"
+            >
+              click here to send your message
+            </a>.
+          </p>
         </motion.div>
       )}
 
@@ -128,9 +158,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="John Doe"
             disabled={status === "loading"}
-            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
-              errors.name ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
-            }`}
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${errors.name ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
+              }`}
           />
           {errors.name && <span className="text-[11px] text-rose-600">{errors.name}</span>}
         </div>
@@ -148,9 +177,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="john@example.com"
             disabled={status === "loading"}
-            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
-              errors.email ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
-            }`}
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${errors.email ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
+              }`}
           />
           {errors.email && <span className="text-[11px] text-rose-600">{errors.email}</span>}
         </div>
@@ -168,9 +196,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="+1 (555) 123-4567"
             disabled={status === "loading"}
-            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${
-              errors.phone ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
-            }`}
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 rounded-none ${errors.phone ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
+              }`}
           />
           {errors.phone && <span className="text-[11px] text-rose-600">{errors.phone}</span>}
         </div>
@@ -188,9 +215,8 @@ export default function ContactForm() {
             onChange={handleChange}
             placeholder="Tell us about your project or inquiry..."
             disabled={status === "loading"}
-            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 resize-none rounded-none ${
-              errors.message ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
-            }`}
+            className={`w-full px-0 py-2 bg-transparent border-b text-sm text-[#1c1a17] placeholder-neutral-400 focus:outline-none transition-colors duration-300 resize-none rounded-none ${errors.message ? "border-rose-400 focus:border-rose-500" : "border-[#e6e2d8] focus:border-[#A97C5B]"
+              }`}
           />
           {errors.message && <span className="text-[11px] text-rose-600">{errors.message}</span>}
         </div>
