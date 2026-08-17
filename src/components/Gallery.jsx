@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { MasonryPhotoAlbum } from "react-photo-album";
 import "react-photo-album/styles.css";
@@ -47,9 +47,19 @@ function CustomRenderImage(props, { photo, width, height }) {
   );
 }
 
+const PAGE_SIZE = 12;
+
 export default function Gallery({ initialCategory = "All", categories, allImages }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef(null);
+
+  // Reset pagination when active category changes
+  const handleCategoryChange = (category) => {
+    setActiveCategory(category);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   // Filter photos based on selection
   const filteredImages =
@@ -69,6 +79,35 @@ export default function Gallery({ initialCategory = "All", categories, allImages
     key: `${img.category}-${idx}-${img.title.replace(/\s+/g, "-").toLowerCase()}`
   }));
 
+  // Viewport Pagination (Scroll & Viewport check)
+  useEffect(() => {
+    if (visibleCount >= photos.length) return;
+
+    const checkAndLoad = () => {
+      if (!sentinelRef.current) return;
+      const rect = sentinelRef.current.getBoundingClientRect();
+      // Load next batch if sentinel is within 500px of bottom of screen
+      if (rect.top <= window.innerHeight + 500) {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, photos.length));
+      }
+    };
+
+    // Check immediately after DOM renders
+    const timer = setTimeout(checkAndLoad, 100);
+
+    window.addEventListener("scroll", checkAndLoad, { passive: true });
+    window.addEventListener("resize", checkAndLoad, { passive: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", checkAndLoad);
+      window.removeEventListener("resize", checkAndLoad);
+    };
+  }, [visibleCount, photos.length]);
+
+  const visiblePhotos = photos.slice(0, visibleCount);
+  const hasMore = visibleCount < photos.length;
+
   return (
     <div className="w-full">
       {/* Category Filtering Tabs (Only shown if initialCategory is 'All') */}
@@ -79,7 +118,7 @@ export default function Gallery({ initialCategory = "All", categories, allImages
             return (
               <button
                 key={category}
-                onClick={() => setActiveCategory(category)}
+                onClick={() => handleCategoryChange(category)}
                 className="relative px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors duration-300 cursor-pointer focus:outline-none"
               >
                 <span className={isActive ? "text-[#1c1a17] font-semibold" : "text-neutral-500 hover:text-black"}>
@@ -108,20 +147,37 @@ export default function Gallery({ initialCategory = "All", categories, allImages
           transition={{ duration: 0.4, ease: "easeInOut" }}
           className="w-full"
         >
-          {photos.length > 0 ? (
-            <MasonryPhotoAlbum
-              photos={photos}
-              onClick={({ index }) => setLightboxIndex(index)}
-              render={{ image: CustomRenderImage }}
-              columns={(containerWidth) => {
-                if (containerWidth < 640) return 1;
-                if (containerWidth < 1024) return 2;
-                if (containerWidth < 1440) return 3;
-                if (containerWidth < 1920) return 4;
-                return 5;
-              }}
-              spacing={16}
-            />
+          {visiblePhotos.length > 0 ? (
+            <>
+              <MasonryPhotoAlbum
+                photos={visiblePhotos}
+                onClick={({ index }) => setLightboxIndex(index)}
+                render={{ image: CustomRenderImage }}
+                columns={(containerWidth) => {
+                  if (containerWidth < 640) return 1;
+                  if (containerWidth < 1024) return 2;
+                  if (containerWidth < 1440) return 3;
+                  if (containerWidth < 1920) return 4;
+                  return 5;
+                }}
+                spacing={16}
+              />
+
+              {/* Viewport Pagination Sentinel Element */}
+              {hasMore && (
+                <div 
+                  ref={sentinelRef} 
+                  className="py-12 flex flex-col items-center justify-center gap-3 text-neutral-500"
+                >
+                  <button
+                    onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, photos.length))}
+                    className="px-6 py-2.5 border border-[#1c1a17] text-[11px] uppercase tracking-[0.25em] text-[#1c1a17] hover:bg-[#1c1a17] hover:text-[#f5f2eb] transition-all duration-300 rounded cursor-pointer font-medium shadow-sm"
+                  >
+                    Load More ({photos.length - visibleCount} remaining)
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex h-60 items-center justify-center border border-dashed border-[#e6e2d8] rounded-lg">
               <p className="text-sm text-neutral-400 uppercase tracking-widest">No images found in this category.</p>
@@ -148,3 +204,4 @@ export default function Gallery({ initialCategory = "All", categories, allImages
     </div>
   );
 }
+
