@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import Gallery from "@/components/Gallery";
-import { portfolioData, PORTFOLIO_CATEGORIES } from "@/data/portfolio";
+import { getPortfolioCategories, getPortfolioImages } from "@/lib/getPortfolioData";
 
 export async function generateStaticParams() {
-  return PORTFOLIO_CATEGORIES.map((cat) => ({
+  const categories = await getPortfolioCategories();
+  return categories.map((cat) => ({
     category: cat.toLowerCase(),
   }));
 }
@@ -14,23 +15,22 @@ export default async function CategoryPage({ params }) {
   const resolvedParams = await params;
   const categoryParam = resolvedParams.category;
 
-  // Match category case-insensitively
-  const matchingData = portfolioData.find(
-    (cat) => cat.category.toLowerCase() === categoryParam.toLowerCase()
+  const categories = await getPortfolioCategories();
+
+  // Match category case-insensitively from Supabase category list
+  const matchedCategory = categories.find(
+    (cat) => cat.toLowerCase() === categoryParam.toLowerCase()
   );
 
-  if (!matchingData) {
+  if (!matchedCategory) {
     notFound();
   }
 
-  // Format images with category tag for the gallery component
-  const categoryImages = matchingData.images.map((img) => ({
-    ...img,
-    category: matchingData.category,
-  }));
+  // Fetch database records ONLY for the requested category from Supabase
+  const categoryImages = await getPortfolioImages(matchedCategory);
 
-  // Find other collections to display at the footer
-  const otherCollections = PORTFOLIO_CATEGORIES.filter(
+  // Find other collections to display in footer navigation
+  const otherCollections = categories.filter(
     (cat) => cat.toLowerCase() !== categoryParam.toLowerCase()
   );
 
@@ -49,7 +49,7 @@ export default async function CategoryPage({ params }) {
               Back to Portfolios
             </Link>
             <h1 className="text-3xl sm:text-4xl font-light uppercase tracking-widest text-[#1c1a17] font-serif">
-              {matchingData.category} <span className="font-semibold text-neutral-500 font-serif">Collection</span>
+              {matchedCategory} <span className="font-semibold text-neutral-500 font-serif">Collection</span>
             </h1>
           </div>
           <span className="text-xs text-neutral-400 tracking-wider">
@@ -60,9 +60,9 @@ export default async function CategoryPage({ params }) {
         {/* Pre-Filtered Gallery Component */}
         <div className="mb-24">
           <Gallery
-            categories={[matchingData.category]}
+            categories={[matchedCategory]}
             allImages={categoryImages}
-            initialCategory={matchingData.category}
+            initialCategory={matchedCategory}
           />
         </div>
 

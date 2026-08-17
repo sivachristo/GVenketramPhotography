@@ -26,6 +26,9 @@ export default function Footer() {
           <Link href="/" className="hover:text-black transition-colors duration-300">
             Portfolio
           </Link>
+          <Link href="/Admin" className="hover:text-black transition-colors duration-300">
+            Admin
+          </Link>
         </div>
 
         {/* Right Section */}

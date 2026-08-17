@@ -12,7 +12,10 @@ import { ChevronRight } from "lucide-react";
 // Custom Render Image component: clean grid of photos, metadata shown as a premium hover overlay
 function CustomRenderImage(props, { photo, width, height }) {
   return (
-    <div className="relative overflow-hidden rounded-lg group bg-[#faf8f5] border border-[#e6e2d8]/60 shadow-sm cursor-pointer aspect-auto">
+    <div 
+      onClick={props.onClick}
+      className="relative overflow-hidden rounded-lg group bg-[#faf8f5] border border-[#e6e2d8]/60 shadow-sm cursor-pointer aspect-auto"
+    >
       <Image
         src={photo.src}
         alt={photo.alt || photo.title || ""}

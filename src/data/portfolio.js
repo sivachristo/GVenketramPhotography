@@ -15,6 +15,13 @@ export const portfolioData = [
     "category": "Advertising",
     "images": [
       {
+        "src": "/portfolio/advertising/2-2.webp",
+        "width": 700,
+        "height": 518,
+        "title": "2 2",
+        "description": "Editorial photography for Advertising by G Venket Ram."
+      },
+      {
         "src": "/portfolio/advertising/01_dupahiya_art_road_4x5-copy.webp",
         "width": 3039,
         "height": 3840,
@@ -25,7 +32,7 @@ export const portfolioData = [
         "src": "/portfolio/advertising/1.webp",
         "width": 2445,
         "height": 923,
-        "title": "1",
+        "title": "bus spec",
         "description": "Editorial photography for Advertising by G Venket Ram."
       },
       {
@@ -47,13 +54,6 @@ export const portfolioData = [
         "width": 1526,
         "height": 1920,
         "title": "Palladium Fashion Avenu Ads W32.9xh47cm",
-        "description": "Editorial photography for Advertising by G Venket Ram."
-      },
-      {
-        "src": "/portfolio/advertising/2-2.webp",
-        "width": 700,
-        "height": 518,
-        "title": "2 2",
         "description": "Editorial photography for Advertising by G Venket Ram."
       },
       {
