@@ -55,6 +55,8 @@ export default function Navbar() {
     }
   };
 
+  const isAdmin = pathname?.toLowerCase().startsWith("/admin");
+
   return (
     <>
       <header className={headerClass}>
@@ -71,44 +73,47 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Nav Links - Dead Center in Viewport */}
-          <nav className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={getNavLinkClass(link.href)}
-              >
-                {link.name}
-              </Link>
-            ))}
-          </nav>
+          {/* Desktop Nav Links - Dead Center in Viewport (Hidden on Admin) */}
+          {!isAdmin && (
+            <nav className="hidden md:flex items-center space-x-8">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={getNavLinkClass(link.href)}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+          )}
 
           {/* Desktop Socials / Mobile Menu Button - Absolute Right Alignment */}
-          <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
-            {/* Desktop Socials */}
-            <div className={socialsClass}>
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-[16px] h-[16px]"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-              </a>
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-              </a>
+          {!isAdmin && (
+            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
+              {/* Desktop Socials */}
+              <div className={socialsClass}>
+                <a href="https://instagram.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                </a>
+                <a href="https://twitter.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-[16px] h-[16px]"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href="https://facebook.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </a>
+              </div>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsOpen(true)}
+                className={mobileMenuButtonClass}
+                aria-label="Toggle menu"
+              >
+                <Menu size={24} />
+              </button>
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsOpen(true)}
-              className={mobileMenuButtonClass}
-              aria-label="Toggle menu"
-            >
-              <Menu size={24} />
-            </button>
-          </div>
-
+          )}
 
         </div>
       </header>

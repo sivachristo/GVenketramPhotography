@@ -63,147 +63,46 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { categories, portfolioData: updatedData } = body;
 
-    if (!Array.isArray(updatedData)) {
+    if (!isSupabaseConfigured || !supabase) {
       return NextResponse.json(
-        { error: "Invalid portfolioData format" },
-        { status: 400 }
-      );
-    }
-
-    const categoriesList = categories || PORTFOLIO_CATEGORIES;
-
-    // 1. Sync to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        // Upsert categories
-        const categoryRecords = categoriesList.map((name, idx) => ({
-          name,
-          display_order: idx,
-        }));
-        const { error: catErr } = await supabase
-          .from("categories")
-          .upsert(categoryRecords, { onConflict: "name" });
-        if (catErr) throw catErr;
-
-        // Flatten images into database rows preserving UUID id when present
-        const flatRows = [];
-        let globalOrder = 0;
-
-        updatedData.forEach((catObj) => {
-          catObj.images.forEach((img) => {
-            const row = {
-              category_name: catObj.category,
-              src: img.src,
-              width: img.width || 1600,
-              height: img.height || 1200,
-              title: img.title || "Untitled",
-              description: img.description || "",
-              display_order: globalOrder++,
-            };
-            if (img.id) {
-              row.id = img.id;
-            }
-            flatRows.push(row);
-          });
-        });
-
-        // Query existing portfolio_images from Supabase to detect removed items
-        const { data: dbImages, error: fetchErr } = await supabase
-          .from("portfolio_images")
-          .select("src");
-
-        if (fetchErr) throw fetchErr;
-
-        if (dbImages && dbImages.length > 0) {
-          const newSrcSet = new Set(flatRows.map((row) => row.src));
-          const removedImages = dbImages.filter((img) => !newSrcSet.has(img.src));
-
-          // Extract bucket path/filename for removed images that reside in Supabase Storage
-          const storagePathsToRemove = [];
-          removedImages.forEach((img) => {
-            if (img.src && img.src.includes("/portfolio-images/")) {
-              const filename = img.src.split("/portfolio-images/")[1]?.split("?")[0];
-              if (filename) {
-                storagePathsToRemove.push(decodeURIComponent(filename));
-              }
-            }
-          });
-
-          // Delete storage objects from portfolio-images bucket if any
-          if (storagePathsToRemove.length > 0) {
-            const { error: removeErr } = await supabase.storage
-              .from("portfolio-images")
-              .remove(storagePathsToRemove);
-
-            if (removeErr) {
-              console.error("Supabase Storage deletion warning:", removeErr.message);
-            }
-          }
-        }
-
-        // Clear and insert new image set
-        const { error: deleteErr } = await supabase
-          .from("portfolio_images")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-
-        if (deleteErr) throw deleteErr;
-
-        if (flatRows.length > 0) {
-          const { error: insertErr } = await supabase
-            .from("portfolio_images")
-            .insert(flatRows);
-
-          if (insertErr) throw insertErr;
-        }
-
-        // Return immediately when Supabase is configured without touching src/data/portfolio.js
-        return NextResponse.json({
-          success: true,
-          message: "Portfolio data saved successfully to Supabase",
-          categories: categoriesList,
-          portfolioData: updatedData,
-          supabaseSynced: true,
-        });
-      } catch (sbErr) {
-        console.error("Supabase POST sync error:", sbErr.message);
-        return NextResponse.json(
-          { error: "Failed to save portfolio data to Supabase: " + sbErr.message },
-          { status: 500 }
-        );
-      }
-    }
-
-    // 2. Local fallback sync only when Supabase is unconfigured
-    try {
-      const fileContent = `export const PORTFOLIO_CATEGORIES = ${JSON.stringify(
-        categoriesList,
-        null,
-        2
-      )};\n\nexport const portfolioData = ${JSON.stringify(updatedData, null, 2)};\n`;
-
-      fs.writeFileSync(DATA_FILE_PATH, fileContent, "utf8");
-
-      return NextResponse.json({
-        success: true,
-        message: "Portfolio data saved successfully to local file",
-        categories: categoriesList,
-        portfolioData: updatedData,
-        supabaseSynced: false,
-      });
-    } catch (fsErr) {
-      console.error("Local file save error:", fsErr.message);
-      return NextResponse.json(
-        { error: "Failed to save portfolio data: " + fsErr.message },
+        { error: "Supabase is not configured" },
         { status: 500 }
       );
     }
+
+    const { category, category_name, src, title, description, width, height, display_order } = body;
+
+    if (!src) {
+      return NextResponse.json({ error: "Missing required 'src' field" }, { status: 400 });
+    }
+
+    const newRecord = {
+      category_name: category || category_name || "Advertising",
+      src: src,
+      width: width || 1600,
+      height: height || 1200,
+      title: title || "Untitled",
+      description: description || "",
+      display_order: display_order || 0,
+    };
+
+    const { data, error } = await supabase
+      .from("portfolio_images")
+      .insert([newRecord])
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      message: "Portfolio item created successfully",
+      data: data?.[0],
+    });
   } catch (error) {
-    console.error("Error saving portfolio data:", error);
+    console.error("Error in POST /api/portfolio:", error);
     return NextResponse.json(
-      { error: "Failed to save portfolio data: " + error.message },
+      { error: "Failed to create portfolio item: " + error.message },
       { status: 500 }
     );
   }
@@ -332,7 +231,7 @@ export async function PATCH(request) {
 
         const { error } = await supabase
           .from("portfolio_images")
-          .upsert(rowsToUpdate, { onConflict: "src" });
+          .upsert(rowsToUpdate, { onConflict: "id" });
 
         if (error) throw error;
 

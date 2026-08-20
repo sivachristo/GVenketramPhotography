@@ -56,6 +56,8 @@ export default function AdminPage() {
     description: "",
   });
 
+  const [modifiedFieldsMap, setModifiedFieldsMap] = useState({});
+
   // Load Initial Portfolio Data
   useEffect(() => {
     fetchPortfolioData();
@@ -68,6 +70,8 @@ export default function AdminPage() {
         const data = await res.json();
         setCategories(data.categories || []);
         setPortfolioData(data.portfolioData || []);
+        setModifiedFieldsMap({});
+        setHasUnsavedChanges(false);
       }
     } catch (err) {
       console.error("Failed to load portfolio data:", err);
@@ -82,37 +86,39 @@ export default function AdminPage() {
     }, 4000);
   };
 
-  // Save changes to disk & Supabase via PATCH API
+  // Trigger PATCH /api/portfolio/[id] for each modified record only when Save Changes is clicked
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      const flatItems = portfolioData.flatMap((cat, catIdx) =>
-        cat.images.map((img, imgIdx) => ({
-          src: img.src,
-          title: img.title || "Untitled",
-          description: img.description || "",
-          category: cat.category,
-          width: img.width || 1600,
-          height: img.height || 1200,
-          display_order: catIdx * 1000 + imgIdx,
-        }))
+      // Collect all modified item payloads
+      const entries = Object.entries(modifiedFieldsMap);
+
+      if (entries.length === 0) {
+        setHasUnsavedChanges(false);
+        setIsSaving(false);
+        showToast("No changes to save.");
+        return;
+      }
+
+      // Trigger PATCH /api/portfolio/[id] with only record changes
+      const patchResults = await Promise.all(
+        entries.map(([id, changes]) =>
+          fetch(`/api/portfolio/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(changes),
+          })
+        )
       );
 
-      const res = await fetch("/api/portfolio", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "batch_update",
-          items: flatItems,
-        }),
-      });
+      const hasError = patchResults.some((res) => !res.ok);
 
-      if (res.ok) {
+      if (!hasError) {
+        setModifiedFieldsMap({});
         setHasUnsavedChanges(false);
         showToast("Changes saved successfully!");
       } else {
-        const errData = await res.json();
-        showToast(errData.error || "Failed to save changes", "error");
+        showToast("Failed to save some changes", "error");
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -122,12 +128,12 @@ export default function AdminPage() {
     }
   };
 
-  // Update inline image title & description metadata
-  const handleUpdateImageMetadata = (categoryName, imageSrc, field, value) => {
+  // Update inline image title & description metadata (buffers change until Save Changes)
+  const handleUpdateImageMetadata = (categoryName, imageSrc, field, value, imageId) => {
     const updatedData = portfolioData.map((cat) => {
       if (cat.category === categoryName) {
         const updatedImages = cat.images.map((img) => {
-          if (img.src === imageSrc) {
+          if ((imageId && img.id === imageId) || img.src === imageSrc) {
             return {
               ...img,
               [field]: value,
@@ -142,10 +148,20 @@ export default function AdminPage() {
 
     setPortfolioData(updatedData);
     setHasUnsavedChanges(true);
+
+    if (imageId) {
+      setModifiedFieldsMap((prev) => ({
+        ...prev,
+        [imageId]: {
+          ...(prev[imageId] || {}),
+          [field]: value,
+        },
+      }));
+    }
   };
 
-  // Re-assign Image Tag / Category
-  const handleTagChange = (targetCategoryName, imageSrc, currentCategoryName) => {
+  // Re-assign Image Tag / Category (buffers change until Save Changes)
+  const handleTagChange = (targetCategoryName, imageSrc, currentCategoryName, imageId) => {
     if (targetCategoryName === currentCategoryName) return;
 
     let movedImage = null;
@@ -154,8 +170,8 @@ export default function AdminPage() {
     const updatedData = portfolioData.map((cat) => {
       if (cat.category === currentCategoryName) {
         const filtered = cat.images.filter((img) => {
-          if (img.src === imageSrc) {
-            movedImage = { ...img };
+          if ((imageId && img.id === imageId) || img.src === imageSrc) {
+            movedImage = { ...img, category: targetCategoryName };
             return false;
           }
           return true;
@@ -180,7 +196,16 @@ export default function AdminPage() {
 
     setPortfolioData(finalData);
     setHasUnsavedChanges(true);
-    showToast(`Moved image tag to "${targetCategoryName}"`);
+
+    if (imageId) {
+      setModifiedFieldsMap((prev) => ({
+        ...prev,
+        [imageId]: {
+          ...(prev[imageId] || {}),
+          category: targetCategoryName,
+        },
+      }));
+    }
   };
 
   // Reorder Image within Category or Global View
@@ -207,7 +232,6 @@ export default function AdminPage() {
           return cat;
         });
         setPortfolioData(updatedData);
-        setHasUnsavedChanges(true);
         return;
       }
 
@@ -240,7 +264,6 @@ export default function AdminPage() {
           return cat;
         });
         setPortfolioData(updatedData);
-        setHasUnsavedChanges(true);
       }
       return;
     }
@@ -265,28 +288,28 @@ export default function AdminPage() {
     });
 
     setPortfolioData(updatedData);
-    setHasUnsavedChanges(true);
   };
 
   // Request Image Removal (opens custom modal)
-  const handleRemoveImage = (categoryName, imageSrc, imageTitle) => {
+  const handleRemoveImage = (categoryName, imageSrc, imageTitle, imageId) => {
     setDeleteConfirmTarget({
       categoryName,
       imageSrc,
       imageTitle,
+      imageId,
     });
   };
 
-  // Confirm Image Removal via single-item PATCH
+  // Confirm Image Removal via RESTful DELETE /api/portfolio/[id]
   const confirmDeleteImage = async () => {
     if (!deleteConfirmTarget) return;
-    const { categoryName, imageSrc, imageTitle } = deleteConfirmTarget;
+    const { categoryName, imageSrc, imageTitle, imageId } = deleteConfirmTarget;
 
     const updatedData = portfolioData.map((cat) => {
       if (cat.category === categoryName) {
         return {
           ...cat,
-          images: cat.images.filter((img) => img.src !== imageSrc),
+          images: cat.images.filter((img) => (imageId ? img.id !== imageId : img.src !== imageSrc)),
         };
       }
       return cat;
@@ -295,25 +318,22 @@ export default function AdminPage() {
     setPortfolioData(updatedData);
     setDeleteConfirmTarget(null);
 
-    try {
-      const res = await fetch("/api/portfolio", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete",
-          src: imageSrc,
-        }),
-      });
+    if (imageId) {
+      try {
+        const res = await fetch(`/api/portfolio/${imageId}`, {
+          method: "DELETE",
+        });
 
-      if (res.ok) {
-        showToast(`Removed "${imageTitle || "Image"}"`);
-      } else {
-        const err = await res.json();
-        showToast(err.error || "Failed to delete image", "error");
+        if (res.ok) {
+          showToast(`Removed "${imageTitle || "Image"}"`);
+        } else {
+          const err = await res.json();
+          showToast(err.error || "Failed to delete image", "error");
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+        showToast("Error deleting image", "error");
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      showToast("Error deleting image", "error");
     }
   };
 
@@ -652,7 +672,7 @@ export default function AdminPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveImage(img.category, img.src, img.title);
+                          handleRemoveImage(img.category, img.src, img.title, img.id);
                         }}
                         className="p-2 bg-red-600/90 text-white rounded hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
                         title="Remove Image"
@@ -675,7 +695,7 @@ export default function AdminPage() {
                           <input
                             type="text"
                             value={img.title || ""}
-                            onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "title", e.target.value)}
+                            onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "title", e.target.value, img.id)}
                             className="w-full text-xs font-serif font-semibold uppercase tracking-wider text-[#1c1a17] bg-white border border-[#e6e2d8] rounded px-2 py-1 focus:outline-none focus:border-[#1c1a17]"
                           />
                         </div>
@@ -686,7 +706,7 @@ export default function AdminPage() {
                           <textarea
                             rows={2}
                             value={img.description || ""}
-                            onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "description", e.target.value)}
+                            onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "description", e.target.value, img.id)}
                             className="w-full text-[11px] text-neutral-700 bg-white border border-[#e6e2d8] rounded px-2 py-1 focus:outline-none focus:border-[#1c1a17]"
                           />
                         </div>
@@ -731,7 +751,7 @@ export default function AdminPage() {
                         </label>
                         <select
                           value={img.category}
-                          onChange={(e) => handleTagChange(e.target.value, img.src, img.category)}
+                          onChange={(e) => handleTagChange(e.target.value, img.src, img.category, img.id)}
                           className="w-full text-xs bg-[#f5f2eb] border border-[#e6e2d8] rounded px-2.5 py-1.5 focus:outline-none focus:border-[#1c1a17] font-sans font-medium"
                         >
                           {categories.map((cName) => (
