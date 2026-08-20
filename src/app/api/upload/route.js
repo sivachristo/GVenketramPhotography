@@ -31,7 +31,15 @@ export async function POST(request) {
             upsert: true,
           });
 
-        if (!uploadErr && uploadResult) {
+        if (uploadErr) {
+          console.error("Supabase Storage upload error:", uploadErr.message);
+          return NextResponse.json(
+            { error: `Supabase Storage upload failed: ${uploadErr.message}` },
+            { status: 500 }
+          );
+        }
+
+        if (uploadResult) {
           const { data: urlData } = supabase.storage
             .from("portfolio-images")
             .getPublicUrl(uniqueFilename);
@@ -45,32 +53,47 @@ export async function POST(request) {
               storage: "supabase",
             });
           }
-        } else {
-          console.warn("Supabase Storage upload warning:", uploadErr?.message);
         }
+
+        return NextResponse.json(
+          { error: "Supabase Storage upload succeeded but failed to generate public URL" },
+          { status: 500 }
+        );
       } catch (sbErr) {
-        console.warn("Supabase upload exception:", sbErr.message);
+        console.error("Supabase upload exception:", sbErr.message);
+        return NextResponse.json(
+          { error: `Supabase Storage upload exception: ${sbErr.message}` },
+          { status: 500 }
+        );
       }
     }
 
-    // 2. Fallback to local public/uploads directory
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    // 2. Local development fallback ONLY when Supabase is genuinely unconfigured
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadsDir, uniqueFilename);
+      fs.writeFileSync(filePath, buffer);
+
+      const publicUrl = `/uploads/${uniqueFilename}`;
+
+      return NextResponse.json({
+        success: true,
+        src: publicUrl,
+        width: 1600,
+        height: 1200,
+        storage: "local",
+      });
+    } catch (fsErr) {
+      console.error("Local upload filesystem error:", fsErr.message);
+      return NextResponse.json(
+        { error: "Local file upload failed: " + fsErr.message },
+        { status: 500 }
+      );
     }
-
-    const filePath = path.join(uploadsDir, uniqueFilename);
-    fs.writeFileSync(filePath, buffer);
-
-    const publicUrl = `/uploads/${uniqueFilename}`;
-
-    return NextResponse.json({
-      success: true,
-      src: publicUrl,
-      width: 1600,
-      height: 1200,
-      storage: "local",
-    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(

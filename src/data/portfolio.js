@@ -18,7 +18,7 @@ export const portfolioData = [
         "src": "/portfolio/advertising/2-2.webp",
         "width": 700,
         "height": 518,
-        "title": "2 2",
+        "title": "Truck",
         "description": "Editorial photography for Advertising by G Venket Ram."
       },
       {

@@ -133,8 +133,7 @@ export async function POST(request) {
               .remove(storagePathsToRemove);
 
             if (removeErr) {
-              console.error("Supabase Storage deletion error:", removeErr.message);
-              throw new Error(`Failed to delete storage file: ${removeErr.message}`);
+              console.error("Supabase Storage deletion warning:", removeErr.message);
             }
           }
         }
@@ -154,31 +153,48 @@ export async function POST(request) {
 
           if (insertErr) throw insertErr;
         }
+
+        // Return immediately when Supabase is configured without touching src/data/portfolio.js
+        return NextResponse.json({
+          success: true,
+          message: "Portfolio data saved successfully to Supabase",
+          categories: categoriesList,
+          portfolioData: updatedData,
+          supabaseSynced: true,
+        });
       } catch (sbErr) {
         console.error("Supabase POST sync error:", sbErr.message);
-        throw sbErr;
+        return NextResponse.json(
+          { error: "Failed to save portfolio data to Supabase: " + sbErr.message },
+          { status: 500 }
+        );
       }
     }
 
-    // 2. Always sync to local file for fallback resilience
-    const fileContent = `export const PORTFOLIO_CATEGORIES = ${JSON.stringify(
-      categoriesList,
-      null,
-      2
-    )};
+    // 2. Local fallback sync only when Supabase is unconfigured
+    try {
+      const fileContent = `export const PORTFOLIO_CATEGORIES = ${JSON.stringify(
+        categoriesList,
+        null,
+        2
+      )};\n\nexport const portfolioData = ${JSON.stringify(updatedData, null, 2)};\n`;
 
-export const portfolioData = ${JSON.stringify(updatedData, null, 2)};
-`;
+      fs.writeFileSync(DATA_FILE_PATH, fileContent, "utf8");
 
-    fs.writeFileSync(DATA_FILE_PATH, fileContent, "utf8");
-
-    return NextResponse.json({
-      success: true,
-      message: "Portfolio data saved successfully",
-      categories: categoriesList,
-      portfolioData: updatedData,
-      supabaseSynced: isSupabaseConfigured,
-    });
+      return NextResponse.json({
+        success: true,
+        message: "Portfolio data saved successfully to local file",
+        categories: categoriesList,
+        portfolioData: updatedData,
+        supabaseSynced: false,
+      });
+    } catch (fsErr) {
+      console.error("Local file save error:", fsErr.message);
+      return NextResponse.json(
+        { error: "Failed to save portfolio data: " + fsErr.message },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Error saving portfolio data:", error);
     return NextResponse.json(
