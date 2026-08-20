@@ -37,6 +37,7 @@ export async function getPortfolioImages(category) {
 
       if (!error && data) {
         return data.map((img) => ({
+          id: img.id,
           src: img.src,
           width: img.width || 1600,
           height: img.height || 1200,
@@ -79,6 +80,7 @@ export async function getPortfolioData() {
           images: dbImages
             .filter((img) => img.category_name === catName)
             .map((img) => ({
+              id: img.id,
               src: img.src,
               width: img.width || 1600,
               height: img.height || 1200,

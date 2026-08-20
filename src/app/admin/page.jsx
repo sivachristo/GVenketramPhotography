@@ -82,22 +82,34 @@ export default function AdminPage() {
     }, 4000);
   };
 
-  // Save changes to disk & Supabase via existing API
+  // Save changes to disk & Supabase via PATCH API
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
+      const flatItems = portfolioData.flatMap((cat, catIdx) =>
+        cat.images.map((img, imgIdx) => ({
+          src: img.src,
+          title: img.title || "Untitled",
+          description: img.description || "",
+          category: cat.category,
+          width: img.width || 1600,
+          height: img.height || 1200,
+          display_order: catIdx * 1000 + imgIdx,
+        }))
+      );
+
       const res = await fetch("/api/portfolio", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          categories,
-          portfolioData,
+          action: "batch_update",
+          items: flatItems,
         }),
       });
 
       if (res.ok) {
         setHasUnsavedChanges(false);
-        showToast("Changes saved successfully to website data!");
+        showToast("Changes saved successfully!");
       } else {
         const errData = await res.json();
         showToast(errData.error || "Failed to save changes", "error");
@@ -265,8 +277,8 @@ export default function AdminPage() {
     });
   };
 
-  // Confirm Image Removal
-  const confirmDeleteImage = () => {
+  // Confirm Image Removal via single-item PATCH
+  const confirmDeleteImage = async () => {
     if (!deleteConfirmTarget) return;
     const { categoryName, imageSrc, imageTitle } = deleteConfirmTarget;
 
@@ -281,12 +293,31 @@ export default function AdminPage() {
     });
 
     setPortfolioData(updatedData);
-    setHasUnsavedChanges(true);
-    showToast(`Removed "${imageTitle || "Image"}"`);
     setDeleteConfirmTarget(null);
+
+    try {
+      const res = await fetch("/api/portfolio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          src: imageSrc,
+        }),
+      });
+
+      if (res.ok) {
+        showToast(`Removed "${imageTitle || "Image"}"`);
+      } else {
+        const err = await res.json();
+        showToast(err.error || "Failed to delete image", "error");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      showToast("Error deleting image", "error");
+    }
   };
 
-  // Submit Add Image Form
+  // Submit Add Image Form via single-item PATCH
   const handleAddImageSubmit = async (e) => {
     e.preventDefault();
     setIsUploading(true);
@@ -305,7 +336,8 @@ export default function AdminPage() {
         });
 
         if (!res.ok) {
-          throw new Error("File upload failed");
+          const errData = await res.json();
+          throw new Error(errData.error || "File upload failed");
         }
 
         const data = await res.json();
@@ -332,33 +364,61 @@ export default function AdminPage() {
       description: newImage.description || `Editorial photography for ${targetCategory} by G Venket Ram.`,
     };
 
-    // Append image to target category
-    const updatedData = portfolioData.map((cat) => {
-      if (cat.category === targetCategory) {
-        return {
-          ...cat,
-          images: [newImageObj, ...cat.images],
-        };
+    // Send single-item PATCH to insert new record directly
+    try {
+      const patchRes = await fetch("/api/portfolio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          image: {
+            ...newImageObj,
+            category: targetCategory,
+          },
+        }),
+      });
+
+      if (!patchRes.ok) {
+        const errData = await patchRes.json();
+        throw new Error(errData.error || "Failed to save image");
       }
-      return cat;
-    });
 
-    setPortfolioData(updatedData);
-    setHasUnsavedChanges(true);
-    setIsAddModalOpen(false);
-    setIsUploading(false);
-    showToast(`Added new image to "${targetCategory}"!`);
+      const patchData = await patchRes.json();
+      const createdImageObj = patchData.data?.id
+        ? { ...newImageObj, id: patchData.data.id }
+        : newImageObj;
 
-    // Reset form
-    setNewImage({
-      title: "",
-      src: "",
-      category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
-      width: 1600,
-      height: 1200,
-      description: "",
-    });
-    setSelectedFile(null);
+      // Append image with UUID id to local UI state
+      const updatedData = portfolioData.map((cat) => {
+        if (cat.category === targetCategory) {
+          return {
+            ...cat,
+            images: [createdImageObj, ...cat.images],
+          };
+        }
+        return cat;
+      });
+
+      setPortfolioData(updatedData);
+      setIsAddModalOpen(false);
+      setIsUploading(false);
+      showToast(`Added new image to "${targetCategory}"!`);
+
+      // Reset form
+      setNewImage({
+        title: "",
+        src: "",
+        category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
+        width: 1600,
+        height: 1200,
+        description: "",
+      });
+      setSelectedFile(null);
+    } catch (err) {
+      console.error("Add image PATCH error:", err);
+      showToast(err.message || "Failed to save image", "error");
+      setIsUploading(false);
+    }
   };
 
   // Flatten images for workspace listing
@@ -542,7 +602,7 @@ export default function AdminPage() {
 
               return (
                 <div
-                  key={`${img.category}-${img.src}-${idx}`}
+                  key={img.id || `${img.category}-${img.src}-${idx}`}
                   className="bg-[#faf8f5] border border-[#e6e2d8] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col group"
                 >
                   {/* Thumbnail Preview - Clickable for Full View */}
