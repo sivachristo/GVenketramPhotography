@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // PATCH /api/portfolio/[id] - Updates a single record by ID with only the changed fields
@@ -36,6 +37,8 @@ export async function PATCH(request, { params }) {
       .select();
 
     if (error) throw error;
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({
       success: true,
@@ -89,6 +92,8 @@ export async function DELETE(request, { params }) {
       .eq("id", id);
 
     if (error) throw error;
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({
       success: true,

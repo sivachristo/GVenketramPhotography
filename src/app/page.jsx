@@ -2,6 +2,9 @@ import Gallery from "@/components/Gallery";
 import HeroScrollLink from "@/components/HeroScrollLink";
 import { getPortfolioData } from "@/lib/getPortfolioData";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Home() {
   const { categories, portfolioData } = await getPortfolioData();
 

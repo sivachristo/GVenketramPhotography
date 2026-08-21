@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { portfolioData, PORTFOLIO_CATEGORIES } from "@/data/portfolio";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -94,6 +95,8 @@ export async function POST(request) {
 
     if (error) throw error;
 
+    revalidatePath("/", "layout");
+
     return NextResponse.json({
       success: true,
       message: "Portfolio item created successfully",
@@ -146,6 +149,8 @@ export async function PATCH(request) {
 
         if (error) throw error;
 
+        revalidatePath("/", "layout");
+
         return NextResponse.json({
           success: true,
           message: "Image updated successfully in Supabase",
@@ -175,6 +180,8 @@ export async function PATCH(request) {
           .select();
 
         if (error) throw error;
+
+        revalidatePath("/", "layout");
 
         return NextResponse.json({
           success: true,
@@ -210,6 +217,8 @@ export async function PATCH(request) {
 
         if (error) throw error;
 
+        revalidatePath("/", "layout");
+
         return NextResponse.json({
           success: true,
           message: "Image deleted successfully from Supabase",
@@ -234,6 +243,8 @@ export async function PATCH(request) {
           .upsert(rowsToUpdate, { onConflict: "id" });
 
         if (error) throw error;
+
+        revalidatePath("/", "layout");
 
         return NextResponse.json({
           success: true,
