@@ -36,7 +36,7 @@ export async function getPortfolioImages(category) {
         .order("display_order", { ascending: true });
 
       if (!error && data) {
-        return data.map((img) => ({
+        return data.map((img, idx) => ({
           id: img.id,
           src: img.src,
           width: img.width || 1600,
@@ -44,6 +44,8 @@ export async function getPortfolioImages(category) {
           title: img.title || "Untitled",
           description: img.description || "",
           category: img.category_name,
+          display_order: img.display_order ?? idx + 1,
+          position_num: img.display_order ?? idx + 1,
         }));
       }
     }
@@ -79,7 +81,7 @@ export async function getPortfolioData() {
           category: catName,
           images: dbImages
             .filter((img) => img.category_name === catName)
-            .map((img) => ({
+            .map((img, idx) => ({
               id: img.id,
               src: img.src,
               width: img.width || 1600,
@@ -87,6 +89,8 @@ export async function getPortfolioData() {
               title: img.title || "Untitled",
               description: img.description || "",
               category: catName,
+              display_order: img.display_order ?? idx + 1,
+              position_num: img.display_order ?? idx + 1,
             })),
         }));
 

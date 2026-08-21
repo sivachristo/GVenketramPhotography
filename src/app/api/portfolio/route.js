@@ -72,20 +72,33 @@ export async function POST(request) {
       );
     }
 
-    const { category, category_name, src, title, description, width, height, display_order } = body;
+    const { category, category_name, src, title, description, width, height, display_order, position_num } = body;
 
     if (!src) {
       return NextResponse.json({ error: "Missing required 'src' field" }, { status: 400 });
     }
 
+    const targetCat = category || category_name || "Advertising";
+    let orderNum = display_order !== undefined ? display_order : position_num;
+
+    if (orderNum === undefined || orderNum === null) {
+      const { data: maxRow } = await supabase
+        .from("portfolio_images")
+        .select("display_order")
+        .eq("category_name", targetCat)
+        .order("display_order", { ascending: false })
+        .limit(1);
+      orderNum = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+    }
+
     const newRecord = {
-      category_name: category || category_name || "Advertising",
+      category_name: targetCat,
       src: src,
       width: width || 1600,
       height: height || 1200,
       title: title || "Untitled",
       description: description || "",
-      display_order: display_order || 0,
+      display_order: orderNum,
     };
 
     const { data, error } = await supabase
@@ -137,6 +150,7 @@ export async function PATCH(request) {
         if (sourceObj.width !== undefined) updateFields.width = sourceObj.width;
         if (sourceObj.height !== undefined) updateFields.height = sourceObj.height;
         if (sourceObj.display_order !== undefined) updateFields.display_order = sourceObj.display_order;
+        if (sourceObj.position_num !== undefined) updateFields.display_order = sourceObj.position_num;
 
         let query = supabase.from("portfolio_images").update(updateFields);
         if (targetId) {
@@ -161,14 +175,27 @@ export async function PATCH(request) {
       // 2. Single Item Create
       if (action === "create" || image) {
         const img = image || body;
+        const targetCat = img.category || img.category_name || "Advertising";
+        let orderNum = img.display_order !== undefined ? img.display_order : img.position_num;
+
+        if (orderNum === undefined || orderNum === null) {
+          const { data: maxRow } = await supabase
+            .from("portfolio_images")
+            .select("display_order")
+            .eq("category_name", targetCat)
+            .order("display_order", { ascending: false })
+            .limit(1);
+          orderNum = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+        }
+
         const newRecord = {
-          category_name: img.category || img.category_name || "Advertising",
+          category_name: targetCat,
           src: img.src,
           width: img.width || 1600,
           height: img.height || 1200,
           title: img.title || "Untitled",
           description: img.description || "",
-          display_order: img.display_order || 0,
+          display_order: orderNum,
         };
         if (img.id) {
           newRecord.id = img.id;
@@ -227,7 +254,7 @@ export async function PATCH(request) {
 
       // 4. Batch items update without full table wipe
       if (action === "batch_update" || Array.isArray(items)) {
-        const rowsToUpdate = (items || []).map((item) => ({
+        const rowsToUpdate = (items || []).map((item, idx) => ({
           ...(item.id ? { id: item.id } : {}),
           category_name: item.category || item.category_name,
           src: item.src,
@@ -235,7 +262,7 @@ export async function PATCH(request) {
           height: item.height || 1200,
           title: item.title || "Untitled",
           description: item.description || "",
-          display_order: item.display_order || 0,
+          display_order: item.display_order !== undefined ? item.display_order : (item.position_num !== undefined ? item.position_num : idx + 1),
         }));
 
         const { error } = await supabase

@@ -86,11 +86,10 @@ export default function AdminPage() {
     }, 4000);
   };
 
-  // Trigger PATCH /api/portfolio/[id] for each modified record only when Save Changes is clicked
+  // Trigger PATCH /api/portfolio for modified records / batch updates
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      // Collect all modified item payloads
       const entries = Object.entries(modifiedFieldsMap);
 
       if (entries.length === 0) {
@@ -100,25 +99,26 @@ export default function AdminPage() {
         return;
       }
 
-      // Trigger PATCH /api/portfolio/[id] with only record changes
-      const patchResults = await Promise.all(
-        entries.map(([id, changes]) =>
-          fetch(`/api/portfolio/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(changes),
-          })
-        )
-      );
+      const itemsToUpdate = entries.map(([id, changes]) => ({
+        id,
+        ...changes,
+      }));
 
-      const hasError = patchResults.some((res) => !res.ok);
+      const res = await fetch("/api/portfolio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "batch_update",
+          items: itemsToUpdate,
+        }),
+      });
 
-      if (!hasError) {
+      if (res.ok) {
         setModifiedFieldsMap({});
         setHasUnsavedChanges(false);
         showToast("Changes saved successfully!");
       } else {
-        showToast("Failed to save some changes", "error");
+        showToast("Failed to save changes", "error");
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -208,86 +208,61 @@ export default function AdminPage() {
     }
   };
 
-  // Reorder Image within Category or Global View
-  const handleReorder = (categoryName, imageSrc, direction, displayedIdx = -1) => {
-    if (activeCategory === "All" && displayedIdx >= 0) {
-      const targetIdx = direction === "up" ? displayedIdx - 1 : displayedIdx + 1;
-      if (targetIdx < 0 || targetIdx >= displayedImages.length) return;
+  // Directly move image to target position number (1-based index)
+  const handleSetPosition = (categoryName, imageSrc, targetPos, imageId) => {
+    const catObj = portfolioData.find((c) => c.category === categoryName);
+    if (!catObj) return;
 
-      const targetImg = displayedImages[targetIdx];
+    const currentIdx = catObj.images.findIndex(
+      (img) => (imageId && img.id === imageId) || img.src === imageSrc
+    );
+    if (currentIdx === -1) return;
 
-      if (targetImg.category === categoryName) {
-        const updatedData = portfolioData.map((cat) => {
-          if (cat.category === categoryName) {
-            const idx1 = cat.images.findIndex((i) => i.src === imageSrc);
-            const idx2 = cat.images.findIndex((i) => i.src === targetImg.src);
-            if (idx1 !== -1 && idx2 !== -1) {
-              const newImages = [...cat.images];
-              const temp = newImages[idx1];
-              newImages[idx1] = newImages[idx2];
-              newImages[idx2] = temp;
-              return { ...cat, images: newImages };
-            }
-          }
-          return cat;
-        });
-        setPortfolioData(updatedData);
-        return;
-      }
+    const targetIdx = Math.max(0, Math.min(targetPos - 1, catObj.images.length - 1));
+    if (currentIdx === targetIdx) return;
 
-      let movedImg = null;
-      let updatedData = portfolioData.map((cat) => {
-        if (cat.category === categoryName) {
-          return {
-            ...cat,
-            images: cat.images.filter((i) => {
-              if (i.src === imageSrc) {
-                movedImg = i;
-                return false;
-              }
-              return true;
-            }),
-          };
-        }
-        return cat;
-      });
+    const images = [...catObj.images];
+    const [movedItem] = images.splice(currentIdx, 1);
+    images.splice(targetIdx, 0, movedItem);
 
-      if (movedImg) {
-        updatedData = updatedData.map((cat) => {
-          if (cat.category === targetImg.category) {
-            const targetInCatIdx = cat.images.findIndex((i) => i.src === targetImg.src);
-            const newImages = [...cat.images];
-            const insertIdx = direction === "up" ? targetInCatIdx + 1 : targetInCatIdx;
-            newImages.splice(Math.max(0, insertIdx), 0, movedImg);
-            return { ...cat, images: newImages };
-          }
-          return cat;
-        });
-        setPortfolioData(updatedData);
-      }
-      return;
-    }
+    // Resequence 1..N
+    const resequenced = images.map((img, i) => ({
+      ...img,
+      display_order: i + 1,
+      position_num: i + 1,
+    }));
 
-    // Single Category View
-    const updatedData = portfolioData.map((cat) => {
-      if (cat.category === categoryName) {
-        const inCatIndex = cat.images.findIndex((i) => i.src === imageSrc);
-        if (inCatIndex === -1) return cat;
-
-        const targetIndex = direction === "up" ? inCatIndex - 1 : inCatIndex + 1;
-        if (targetIndex < 0 || targetIndex >= cat.images.length) return cat;
-
-        const newImages = [...cat.images];
-        const temp = newImages[inCatIndex];
-        newImages[inCatIndex] = newImages[targetIndex];
-        newImages[targetIndex] = temp;
-
-        return { ...cat, images: newImages };
-      }
-      return cat;
-    });
+    const updatedData = portfolioData.map((cat) =>
+      cat.category === categoryName ? { ...cat, images: resequenced } : cat
+    );
 
     setPortfolioData(updatedData);
+    setHasUnsavedChanges(true);
+
+    // Track updated display_order in modifiedFieldsMap
+    const newMap = { ...modifiedFieldsMap };
+    resequenced.forEach((img, i) => {
+      if (img.id) {
+        newMap[img.id] = {
+          ...(newMap[img.id] || {}),
+          display_order: i + 1,
+          position_num: i + 1,
+        };
+      }
+    });
+    setModifiedFieldsMap(newMap);
+  };
+
+  // Reorder Image using step direction
+  const handleReorder = (categoryName, imageSrc, direction) => {
+    const catObj = portfolioData.find((c) => c.category === categoryName);
+    if (!catObj) return;
+
+    const inCatIndex = catObj.images.findIndex((i) => i.src === imageSrc);
+    if (inCatIndex === -1) return;
+
+    const targetPos = direction === "up" ? inCatIndex : inCatIndex + 2;
+    handleSetPosition(categoryName, imageSrc, targetPos, catObj.images[inCatIndex]?.id);
   };
 
   // Request Image Removal (opens custom modal)
@@ -762,37 +737,85 @@ export default function AdminPage() {
                         </select>
                       </div>
 
-                      {/* Re-order & Action Bar */}
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-neutral-400 tracking-wider">
-                          Pos #{displayPos}
-                        </span>
+                      {/* Re-order & Position Control Bar */}
+                      <div className="flex items-center justify-between pt-1 gap-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider">
+                            Pos #
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={catObj ? catObj.images.length : 1}
+                            defaultValue={displayPos}
+                            key={`${img.id || img.src}-${displayPos}`}
+                            onBlur={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val) && val !== displayPos) {
+                                handleSetPosition(img.category, img.src, val, img.id);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.target.blur();
+                              }
+                            }}
+                            className="w-12 text-center text-xs font-mono font-bold text-[#1c1a17] bg-white border border-[#e6e2d8] rounded py-0.5 focus:outline-none focus:border-[#1c1a17]"
+                            title="Type any position number and press Enter to jump directly"
+                          />
+                        </div>
 
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => handleReorder(img.category, img.src, "up", idx)}
+                            onClick={() => handleSetPosition(img.category, img.src, 1, img.id)}
+                            disabled={isFirst}
+                            className={`px-1.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded border ${
+                              isFirst
+                                ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                            }`}
+                            title="Move directly to Position #1 (Top)"
+                          >
+                            Top
+                          </button>
+
+                          <button
+                            onClick={() => handleReorder(img.category, img.src, "up")}
                             disabled={isFirst}
                             className={`p-1.5 rounded border ${
                               isFirst
                                 ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
                                 : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                             }`}
-                            title="Move Earlier in Tab"
+                            title="Move Up 1 spot"
                           >
                             <ArrowUp size={13} />
                           </button>
 
                           <button
-                            onClick={() => handleReorder(img.category, img.src, "down", idx)}
+                            onClick={() => handleReorder(img.category, img.src, "down")}
                             disabled={isLast}
                             className={`p-1.5 rounded border ${
                               isLast
                                 ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
                                 : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                             }`}
-                            title="Move Later in Tab"
+                            title="Move Down 1 spot"
                           >
                             <ArrowDown size={13} />
+                          </button>
+
+                          <button
+                            onClick={() => handleSetPosition(img.category, img.src, catObj ? catObj.images.length : 1, img.id)}
+                            disabled={isLast}
+                            className={`px-1.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded border ${
+                              isLast
+                                ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                            }`}
+                            title="Move directly to last position (Bottom)"
+                          >
+                            End
                           </button>
                         </div>
                       </div>

@@ -29,6 +29,7 @@ export async function PATCH(request, { params }) {
     if (body.width !== undefined) updateFields.width = body.width;
     if (body.height !== undefined) updateFields.height = body.height;
     if (body.display_order !== undefined) updateFields.display_order = body.display_order;
+    if (body.position_num !== undefined) updateFields.display_order = body.position_num;
 
     const { data, error } = await supabase
       .from("portfolio_images")
