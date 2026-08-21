@@ -252,24 +252,36 @@ export async function PATCH(request) {
         });
       }
 
-      // 4. Batch items update without full table wipe
+      // 4. Batch items update using selective field updates
       if (action === "batch_update" || Array.isArray(items)) {
-        const rowsToUpdate = (items || []).map((item, idx) => ({
-          ...(item.id ? { id: item.id } : {}),
-          category_name: item.category || item.category_name,
-          src: item.src,
-          width: item.width || 1600,
-          height: item.height || 1200,
-          title: item.title || "Untitled",
-          description: item.description || "",
-          display_order: item.display_order !== undefined ? item.display_order : (item.position_num !== undefined ? item.position_num : idx + 1),
-        }));
+        const updatePromises = (items || []).map((item) => {
+          const updateFields = {};
+          if (item.title !== undefined) updateFields.title = item.title;
+          if (item.description !== undefined) updateFields.description = item.description;
+          if (item.category !== undefined || item.category_name !== undefined) {
+            updateFields.category_name = item.category || item.category_name;
+          }
+          if (item.src !== undefined) updateFields.src = item.src;
+          if (item.width !== undefined) updateFields.width = item.width;
+          if (item.height !== undefined) updateFields.height = item.height;
+          if (item.display_order !== undefined) updateFields.display_order = item.display_order;
+          if (item.position_num !== undefined) updateFields.display_order = item.position_num;
 
-        const { error } = await supabase
-          .from("portfolio_images")
-          .upsert(rowsToUpdate, { onConflict: "id" });
+          const targetId = item.id;
+          const targetSrc = item.src;
 
-        if (error) throw error;
+          let query = supabase.from("portfolio_images").update(updateFields);
+          if (targetId) {
+            return query.eq("id", targetId);
+          } else if (targetSrc) {
+            return query.eq("src", targetSrc);
+          }
+          return Promise.resolve({ error: null });
+        });
+
+        const results = await Promise.all(updatePromises);
+        const hasError = results.find((r) => r && r.error);
+        if (hasError && hasError.error) throw hasError.error;
 
         revalidatePath("/", "layout");
 
