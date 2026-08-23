@@ -44,8 +44,10 @@ export default function AdminPage() {
 
   // Add Image Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [uploadMode, setUploadMode] = useState("url"); // 'url' or 'file'
+  const [uploadMode, setUploadMode] = useState("file"); // 'url' or 'file'
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadStatusText, setUploadStatusText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [newImage, setNewImage] = useState({
     title: "",
@@ -312,45 +314,114 @@ export default function AdminPage() {
     }
   };
 
-  // Submit Add Image Form via single-item PATCH
+  // Submit Add Image Form (supports Bulk Multi-File Upload or URL)
   const handleAddImageSubmit = async (e) => {
     e.preventDefault();
     setIsUploading(true);
 
-    let finalSrc = newImage.src;
+    const targetCategory = newImage.category || categories[0] || "Advertising";
 
-    // If uploading a file, post file to upload API
-    if (uploadMode === "file" && selectedFile) {
+    // 1. BULK FILE UPLOAD MODE
+    if (uploadMode === "file" && selectedFiles.length > 0) {
       const formData = new FormData();
-      formData.append("file", selectedFile);
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
 
       try {
-        const res = await fetch("/api/upload", {
+        setUploadStatusText(`Uploading ${selectedFiles.length} image(s) to storage...`);
+
+        const uploadRes = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
-        if (!res.ok) {
-          const errData = await res.json();
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
           throw new Error(errData.error || "File upload failed");
         }
 
-        const data = await res.json();
-        finalSrc = data.src;
-      } catch (err) {
-        showToast(err.message || "Failed to upload image file", "error");
+        const uploadData = await uploadRes.json();
+        const uploadedFiles = uploadData.files || [];
+
+        if (uploadedFiles.length === 0) {
+          throw new Error("No files were successfully uploaded");
+        }
+
+        setUploadStatusText(`Saving ${uploadedFiles.length} image(s) to database...`);
+
+        const imagesToCreate = uploadedFiles.map((uf, idx) => ({
+          src: uf.src,
+          title: selectedFiles.length === 1 && newImage.title ? newImage.title : (uf.title || `Artwork ${idx + 1}`),
+          category: targetCategory,
+          width: uf.width || 1600,
+          height: uf.height || 1200,
+          description: newImage.description || `Editorial photography for ${targetCategory} by G Venket Ram.`,
+        }));
+
+        const portfolioRes = await fetch("/api/portfolio", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "bulk_create",
+            category: targetCategory,
+            images: imagesToCreate,
+          }),
+        });
+
+        if (!portfolioRes.ok) {
+          const errData = await portfolioRes.json();
+          throw new Error(errData.error || "Failed to save portfolio items");
+        }
+
+        const portfolioDataRes = await portfolioRes.json();
+        const createdItems = portfolioDataRes.data || [];
+
+        // Prepend created images to local UI state for target category
+        const updatedData = portfolioData.map((cat) => {
+          if (cat.category === targetCategory) {
+            return {
+              ...cat,
+              images: [...createdItems, ...cat.images],
+            };
+          }
+          return cat;
+        });
+
+        setPortfolioData(updatedData);
+        setIsAddModalOpen(false);
         setIsUploading(false);
+        setSelectedFiles([]);
+        setUploadStatusText("");
+        showToast(`Successfully added ${createdItems.length} image(s) to "${targetCategory}"!`);
+
+        // Reset form
+        setNewImage({
+          title: "",
+          src: "",
+          category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
+          width: 1600,
+          height: 1200,
+          description: "",
+        });
+        return;
+      } catch (err) {
+        console.error("Bulk upload error:", err);
+        showToast(err.message || "Failed to process bulk upload", "error");
+        setIsUploading(false);
+        setUploadStatusText("");
         return;
       }
     }
 
-    if (!finalSrc) {
-      showToast("Please provide an image URL or upload a file", "error");
+    // 2. SINGLE URL UPLOAD MODE
+    let finalSrc = newImage.src;
+    if (!finalSrc && uploadMode === "url") {
+      showToast("Please provide an image URL", "error");
       setIsUploading(false);
       return;
     }
 
-    const targetCategory = newImage.category || categories[0] || "Advertising";
     const newImageObj = {
       src: finalSrc,
       width: parseInt(newImage.width) || 1600,
@@ -359,7 +430,6 @@ export default function AdminPage() {
       description: newImage.description || `Editorial photography for ${targetCategory} by G Venket Ram.`,
     };
 
-    // Send single-item PATCH to insert new record directly
     try {
       const patchRes = await fetch("/api/portfolio", {
         method: "PATCH",
@@ -383,7 +453,6 @@ export default function AdminPage() {
         ? { ...newImageObj, id: patchData.data.id }
         : newImageObj;
 
-      // Append image with UUID id to local UI state
       const updatedData = portfolioData.map((cat) => {
         if (cat.category === targetCategory) {
           return {
@@ -399,7 +468,6 @@ export default function AdminPage() {
       setIsUploading(false);
       showToast(`Added new image to "${targetCategory}"!`);
 
-      // Reset form
       setNewImage({
         title: "",
         src: "",
@@ -408,7 +476,7 @@ export default function AdminPage() {
         height: 1200,
         description: "",
       });
-      setSelectedFile(null);
+      setSelectedFiles([]);
     } catch (err) {
       console.error("Add image PATCH error:", err);
       showToast(err.message || "Failed to save image", "error");
@@ -980,15 +1048,35 @@ export default function AdminPage() {
                 ) : (
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Choose Local Image File *
+                      Choose Image File(s) (Select 1 or Multiple) *
                     </label>
                     <input
                       type="file"
-                      required
+                      multiple
                       accept="image/*"
-                      onChange={(e) => setSelectedFile(e.target.files[0])}
+                      required={selectedFiles.length === 0}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setSelectedFiles(files);
+                      }}
                       className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
                     />
+                    {selectedFiles.length > 0 && (
+                      <div className="mt-2.5 p-3 bg-[#e6e2d8]/50 border border-[#d8d3c5] rounded text-xs space-y-1.5 max-h-40 overflow-y-auto">
+                        <div className="font-semibold text-[#1c1a17] text-[11px] uppercase tracking-wider flex justify-between">
+                          <span>{selectedFiles.length} file(s) selected:</span>
+                          <span>{(selectedFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB</span>
+                        </div>
+                        <ul className="space-y-1 text-neutral-600 font-mono text-[10px] divide-y divide-[#d8d3c5]/50">
+                          {selectedFiles.map((f, i) => (
+                            <li key={i} className="pt-1 flex items-center justify-between gap-2">
+                              <span className="truncate flex-1">#{i + 1}: {f.name}</span>
+                              <span className="text-neutral-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1013,12 +1101,12 @@ export default function AdminPage() {
                 {/* Title */}
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Title *
+                    Title {uploadMode === "file" && selectedFiles.length > 1 ? "(Optional for bulk upload)" : "*"}
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. Royal Sari Collection"
+                    required={uploadMode === "url" || selectedFiles.length <= 1}
+                    placeholder={uploadMode === "file" && selectedFiles.length > 1 ? "Auto-formatted from filenames if left blank" : "e.g. Royal Sari Collection"}
                     value={newImage.title}
                     onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
@@ -1065,11 +1153,20 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Upload Status / Progress Message */}
+                {uploadStatusText && (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-300 rounded text-xs text-amber-900 flex items-center gap-2 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
+                    <span className="font-medium">{uploadStatusText}</span>
+                  </div>
+                )}
+
                 {/* Form Buttons */}
                 <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#e6e2d8]">
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(false)}
+                    disabled={isUploading}
                     className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium"
                   >
                     Cancel
@@ -1077,9 +1174,16 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={isUploading}
-                    className="px-5 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded font-medium transition-colors"
+                    className="px-5 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded font-medium transition-colors cursor-pointer flex items-center gap-2"
                   >
-                    {isUploading ? "Uploading..." : "Add to Portfolio"}
+                    {isUploading ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <span>{uploadMode === "file" && selectedFiles.length > 1 ? `Add ${selectedFiles.length} Images` : "Add to Portfolio"}</span>
+                    )}
                   </button>
                 </div>
 

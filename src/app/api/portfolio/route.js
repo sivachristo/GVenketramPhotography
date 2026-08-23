@@ -1,11 +1,7 @@
-import fs from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { portfolioData, PORTFOLIO_CATEGORIES } from "@/data/portfolio";
+import { DEFAULT_CATEGORIES } from "@/lib/getPortfolioData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-const DATA_FILE_PATH = path.join(process.cwd(), "src", "data", "portfolio.js");
 
 export async function GET() {
   try {
@@ -22,23 +18,26 @@ export async function GET() {
         .select("*")
         .order("display_order", { ascending: true });
 
-      if (!imgError && dbImages && dbImages.length > 0) {
+      if (!imgError && dbImages) {
         const categoryList = dbCategories && dbCategories.length > 0
           ? dbCategories.map((c) => c.name)
-          : PORTFOLIO_CATEGORIES;
+          : DEFAULT_CATEGORIES;
 
         // Group images by category preserving database UUID id
         const grouped = categoryList.map((catName) => ({
           category: catName,
           images: dbImages
             .filter((img) => img.category_name === catName)
-            .map((img) => ({
+            .map((img, idx) => ({
               id: img.id,
               src: img.src,
-              width: img.width,
-              height: img.height,
-              title: img.title,
+              width: img.width || 1600,
+              height: img.height || 1200,
+              title: img.title || "Untitled",
               description: img.description || "",
+              category: catName,
+              display_order: img.display_order ?? idx + 1,
+              position_num: img.display_order ?? idx + 1,
             })),
         }));
 
@@ -50,14 +49,13 @@ export async function GET() {
       }
     }
   } catch (err) {
-    console.warn("Supabase GET fetch fallback to local file:", err.message);
+    console.error("Supabase GET fetch error:", err.message);
   }
 
-  // Fallback to local portfolio.js
   return NextResponse.json({
-    categories: PORTFOLIO_CATEGORIES,
-    portfolioData: portfolioData,
-    source: "local",
+    categories: DEFAULT_CATEGORIES,
+    portfolioData: DEFAULT_CATEGORIES.map((cat) => ({ category: cat, images: [] })),
+    source: "supabase",
   });
 }
 
@@ -214,6 +212,52 @@ export async function PATCH(request) {
           success: true,
           message: "Image created successfully in Supabase",
           data: data?.[0],
+        });
+      }
+
+      // 2b. Bulk Create (array of images)
+      if (action === "bulk_create" || (Array.isArray(body.images) && action !== "batch_update")) {
+        const imageList = body.images || [];
+        if (imageList.length === 0) {
+          return NextResponse.json({ error: "No images provided for bulk creation" }, { status: 400 });
+        }
+
+        const targetCat = body.category || imageList[0]?.category || imageList[0]?.category_name || "Advertising";
+
+        // Query max display_order for category
+        const { data: maxRow } = await supabase
+          .from("portfolio_images")
+          .select("display_order")
+          .eq("category_name", targetCat)
+          .order("display_order", { ascending: false })
+          .limit(1);
+
+        let startOrder = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+
+        const recordsToInsert = imageList.map((img, idx) => ({
+          ...(img.id ? { id: img.id } : {}),
+          category_name: targetCat,
+          src: img.src,
+          width: img.width || 1600,
+          height: img.height || 1200,
+          title: img.title || "Untitled",
+          description: img.description || `Editorial photography for ${targetCat} by G Venket Ram.`,
+          display_order: startOrder + idx,
+        }));
+
+        const { data: insertedData, error: insertErr } = await supabase
+          .from("portfolio_images")
+          .insert(recordsToInsert)
+          .select();
+
+        if (insertErr) throw insertErr;
+
+        revalidatePath("/", "layout");
+
+        return NextResponse.json({
+          success: true,
+          message: `Successfully created ${insertedData ? insertedData.length : 0} images in Supabase`,
+          data: insertedData,
         });
       }
 

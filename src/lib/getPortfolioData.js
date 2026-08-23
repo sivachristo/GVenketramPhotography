@@ -1,5 +1,16 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { portfolioData, PORTFOLIO_CATEGORIES } from "@/data/portfolio";
+
+export const DEFAULT_CATEGORIES = [
+  "Advertising",
+  "Fashion",
+  "Jewellery",
+  "Art",
+  "Food",
+  "Movies",
+  "Travel",
+  "Calendar",
+  "Personalities",
+];
 
 export async function getPortfolioCategories() {
   try {
@@ -14,21 +25,19 @@ export async function getPortfolioCategories() {
       }
     }
   } catch (err) {
-    console.warn("Supabase getPortfolioCategories fallback:", err.message);
+    console.error("Error fetching getPortfolioCategories from Supabase:", err);
   }
-  return PORTFOLIO_CATEGORIES;
+  return DEFAULT_CATEGORIES;
 }
 
 export async function getPortfolioImages(category) {
   try {
     if (isSupabaseConfigured && supabase) {
-      // Get categories to find exact case-matched category name
       const categories = await getPortfolioCategories();
       const matchedCategory = categories.find(
         (c) => c.toLowerCase() === category.toLowerCase()
       ) || category;
 
-      // Query PostgreSQL database ONLY for rows matching this category_name
       const { data, error } = await supabase
         .from("portfolio_images")
         .select("*")
@@ -50,20 +59,9 @@ export async function getPortfolioImages(category) {
       }
     }
   } catch (err) {
-    console.warn("Supabase getPortfolioImages fallback:", err.message);
+    console.error("Error fetching getPortfolioImages from Supabase:", err);
   }
-
-  // Fallback to local portfolio.js filtering
-  const matchingData = portfolioData.find(
-    (cat) => cat.category.toLowerCase() === category.toLowerCase()
-  );
-
-  if (!matchingData) return [];
-
-  return matchingData.images.map((img) => ({
-    ...img,
-    category: matchingData.category,
-  }));
+  return [];
 }
 
 export async function getPortfolioData() {
@@ -101,11 +99,11 @@ export async function getPortfolioData() {
       }
     }
   } catch (err) {
-    console.warn("Supabase getPortfolioData fallback:", err.message);
+    console.error("Error fetching getPortfolioData from Supabase:", err);
   }
 
   return {
-    categories: PORTFOLIO_CATEGORIES,
-    portfolioData: portfolioData,
+    categories: DEFAULT_CATEGORIES,
+    portfolioData: DEFAULT_CATEGORIES.map((cat) => ({ category: cat, images: [] })),
   };
 }
