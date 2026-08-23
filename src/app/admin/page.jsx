@@ -375,11 +375,24 @@ export default function AdminPage() {
         }
 
         const portfolioDataRes = await portfolioRes.json();
-        const createdItems = portfolioDataRes.data || [];
+        const rawCreated = portfolioDataRes.data || [];
+        const createdItems = rawCreated.map((item, idx) => ({
+          id: item.id || `temp-${Date.now()}-${idx}`,
+          src: item.src,
+          width: item.width || 1600,
+          height: item.height || 1200,
+          title: item.title || "Untitled",
+          description: item.description || "",
+          category: item.category_name || item.category || targetCategory,
+          display_order: item.display_order ?? idx + 1,
+          position_num: item.display_order ?? idx + 1,
+        }));
 
         // Prepend created images to local UI state for target category
+        let foundCategory = false;
         const updatedData = portfolioData.map((cat) => {
-          if (cat.category === targetCategory) {
+          if (cat.category.toLowerCase() === targetCategory.toLowerCase()) {
+            foundCategory = true;
             return {
               ...cat,
               images: [...createdItems, ...cat.images],
@@ -387,6 +400,13 @@ export default function AdminPage() {
           }
           return cat;
         });
+
+        if (!foundCategory) {
+          updatedData.push({
+            category: targetCategory,
+            images: createdItems,
+          });
+        }
 
         setPortfolioData(updatedData);
         setIsAddModalOpen(false);
@@ -449,12 +469,17 @@ export default function AdminPage() {
       }
 
       const patchData = await patchRes.json();
-      const createdImageObj = patchData.data?.id
-        ? { ...newImageObj, id: patchData.data.id }
-        : newImageObj;
+      const rawSingle = patchData.data || {};
+      const createdImageObj = {
+        ...newImageObj,
+        id: rawSingle.id || newImageObj.id || `temp-${Date.now()}`,
+        category: rawSingle.category_name || rawSingle.category || targetCategory,
+      };
 
+      let foundCategory = false;
       const updatedData = portfolioData.map((cat) => {
-        if (cat.category === targetCategory) {
+        if (cat.category.toLowerCase() === targetCategory.toLowerCase()) {
+          foundCategory = true;
           return {
             ...cat,
             images: [createdImageObj, ...cat.images],
@@ -462,6 +487,13 @@ export default function AdminPage() {
         }
         return cat;
       });
+
+      if (!foundCategory) {
+        updatedData.push({
+          category: targetCategory,
+          images: [createdImageObj],
+        });
+      }
 
       setPortfolioData(updatedData);
       setIsAddModalOpen(false);

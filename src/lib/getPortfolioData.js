@@ -41,7 +41,7 @@ export async function getPortfolioImages(category) {
       const { data, error } = await supabase
         .from("portfolio_images")
         .select("*")
-        .eq("category_name", matchedCategory)
+        .ilike("category_name", matchedCategory)
         .order("display_order", { ascending: true });
 
       if (!error && data) {
@@ -78,7 +78,7 @@ export async function getPortfolioData() {
         const grouped = categories.map((catName) => ({
           category: catName,
           images: dbImages
-            .filter((img) => img.category_name === catName)
+            .filter((img) => img.category_name && img.category_name.toLowerCase() === catName.toLowerCase())
             .map((img, idx) => ({
               id: img.id,
               src: img.src,

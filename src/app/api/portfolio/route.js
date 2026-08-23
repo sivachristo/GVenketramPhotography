@@ -27,7 +27,7 @@ export async function GET() {
         const grouped = categoryList.map((catName) => ({
           category: catName,
           images: dbImages
-            .filter((img) => img.category_name === catName)
+            .filter((img) => img.category_name && img.category_name.toLowerCase() === catName.toLowerCase())
             .map((img, idx) => ({
               id: img.id,
               src: img.src,
