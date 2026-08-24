@@ -2,6 +2,8 @@ import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CartDrawer from "@/components/CartDrawer";
+import { CartProvider } from "@/context/CartContext";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -16,8 +18,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "G Venket Ram Photography | Premium Portfolio",
-  description: "High-end fashion, jewellery, art, and advertising photography by G Venket Ram Photography.",
+  title: "G Venket Ram Photography | Premium Portfolio & Art Gallery",
+  description: "High-end fashion, jewellery, art, advertising photography, and fine art prints by G Venket Ram Photography.",
 };
 
 export default function RootLayout({ children }) {
@@ -27,11 +29,16 @@ export default function RootLayout({ children }) {
       className={`${cormorant.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#f5f2eb] text-[#1c1a17] selection:bg-[#1c1a17] selection:text-[#f5f2eb] font-sans">
-        <Navbar />
-        <main className="flex-grow flex flex-col">
-          {children}
-        </main>
+        <CartProvider>
+          <Navbar />
+          <main className="flex-grow flex flex-col">
+            {children}
+          </main>
+          <Footer />
+          <CartDrawer />
+        </CartProvider>
       </body>
     </html>
   );
 }
+

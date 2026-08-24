@@ -3,15 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, ShoppingBag } from "lucide-react";
 import Sidebar from "./Sidebar";
+import { useCart } from "@/context/CartContext";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { cartCount, toggleCart } = useCart();
 
   const navLinks = [
     { name: "Home", href: "/" },
+    { name: "Art Gallery", href: "/art-gallery" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];
@@ -39,11 +42,15 @@ export default function Navbar() {
     : "hover:text-black transition-colors duration-300";
 
   const mobileMenuButtonClass = isHome
-    ? "flex items-center justify-center p-2 text-[#F8F5F1]/85 hover:text-white md:hidden transition-colors duration-300"
-    : "flex items-center justify-center p-2 text-neutral-500 hover:text-black md:hidden transition-colors duration-300";
+    ? "flex items-center justify-center p-2 text-[#F8F5F1]/85 hover:text-white md:hidden transition-colors duration-300 cursor-pointer"
+    : "flex items-center justify-center p-2 text-neutral-500 hover:text-black md:hidden transition-colors duration-300 cursor-pointer";
+
+  const cartButtonClass = isHome
+    ? "relative flex items-center justify-center p-2 text-[#F8F5F1]/85 hover:text-white transition-colors duration-300 cursor-pointer"
+    : "relative flex items-center justify-center p-2 text-neutral-600 hover:text-black transition-colors duration-300 cursor-pointer";
 
   const getNavLinkClass = (linkHref) => {
-    const isActive = pathname === linkHref;
+    const isActive = pathname === linkHref || (linkHref.startsWith("/art-gallery") && pathname.startsWith("/art-gallery"));
     if (isHome) {
       return `text-xs uppercase tracking-[0.2em] transition-colors duration-300 hover:text-white ${
         isActive ? "text-white font-semibold text-shadow-editorial" : "text-[#F8F5F1]/75 font-medium"
@@ -88,9 +95,9 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* Desktop Socials / Mobile Menu Button - Absolute Right Alignment */}
+          {/* Desktop Socials, Cart Button / Mobile Menu Button - Absolute Right Alignment */}
           {!isAdmin && (
-            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
+            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-3 sm:space-x-4">
               {/* Desktop Socials */}
               <div className={socialsClass}>
                 <a href="https://instagram.com" target="_blank" rel="noreferrer" className={socialLinkHoverClass}>
@@ -103,6 +110,21 @@ export default function Navbar() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                 </a>
               </div>
+
+              {/* Shopping Cart Button */}
+              <button
+                onClick={toggleCart}
+                className={cartButtonClass}
+                aria-label="Shopping Cart"
+                title="View Artwork Cart"
+              >
+                <ShoppingBag size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#A97C5B] text-[9px] font-bold text-white shadow">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
 
               {/* Mobile Menu Button */}
               <button

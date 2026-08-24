@@ -16,15 +16,18 @@ export default function Footer() {
         </div>
 
         {/* Middle Links */}
-        <div className="flex space-x-6 text-xs uppercase tracking-widest text-neutral-400">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-neutral-400">
+          <Link href="/" className="hover:text-black transition-colors duration-300">
+            Home
+          </Link>
+          <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
+            Art Gallery
+          </Link>
           <Link href="/about" className="hover:text-black transition-colors duration-300">
             About
           </Link>
           <Link href="/contact" className="hover:text-black transition-colors duration-300">
             Contact
-          </Link>
-          <Link href="/" className="hover:text-black transition-colors duration-300">
-            Portfolio
           </Link>
           <Link href="/Admin" className="hover:text-black transition-colors duration-300">
             Admin

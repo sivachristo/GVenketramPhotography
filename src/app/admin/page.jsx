@@ -60,9 +60,37 @@ export default function AdminPage() {
 
   const [modifiedFieldsMap, setModifiedFieldsMap] = useState({});
 
-  // Load Initial Portfolio Data
+  // Main Admin Dashboard Tab: 'portfolio' | 'art-gallery'
+  const [mainTab, setMainTab] = useState("portfolio");
+
+  // Art Gallery State
+  const [artworksList, setArtworksList] = useState([]);
+  const [artCategoryFilter, setArtCategoryFilter] = useState("All");
+  const [artSearchQuery, setArtSearchQuery] = useState("");
+  const [isArtworkModalOpen, setIsArtworkModalOpen] = useState(false);
+  const [editingArtwork, setEditingArtwork] = useState(null); // null = Create Mode, object = Edit Mode
+  const [artworkDeleteTarget, setArtworkDeleteTarget] = useState(null);
+  const [artworkUploadMode, setArtworkUploadMode] = useState("file"); // 'file' or 'url'
+  const [artworkSelectedFile, setArtworkSelectedFile] = useState(null);
+  const [isSavingArtwork, setIsSavingArtwork] = useState(false);
+
+  const [artworkForm, setArtworkForm] = useState({
+    title: "",
+    image: "",
+    price: 350,
+    type: "Physical",
+    category: "Physical Prints",
+    availability: "In Stock",
+    quantity: 25,
+    dimensions: "24 x 36 inches",
+    shortDescription: "",
+    description: "",
+  });
+
+  // Load Initial Portfolio Data & Artworks
   useEffect(() => {
     fetchPortfolioData();
+    fetchArtworksData();
   }, []);
 
   const fetchPortfolioData = async () => {
@@ -78,6 +106,161 @@ export default function AdminPage() {
     } catch (err) {
       console.error("Failed to load portfolio data:", err);
       showToast("Failed to load data from server", "error");
+    }
+  };
+
+  const fetchArtworksData = async () => {
+    try {
+      const res = await fetch("/api/artworks");
+      if (res.ok) {
+        const data = await res.json();
+        setArtworksList(data.artworks || []);
+      }
+    } catch (err) {
+      console.error("Failed to load artworks data:", err);
+    }
+  };
+
+  const handleOpenCreateArtworkModal = () => {
+    setEditingArtwork(null);
+    setArtworkForm({
+      title: "",
+      image: "",
+      price: 350,
+      type: "Physical",
+      category: "Physical Prints",
+      availability: "In Stock",
+      quantity: 25,
+      dimensions: "24 x 36 inches",
+      shortDescription: "",
+      description: "",
+    });
+    setArtworkSelectedFile(null);
+    setIsArtworkModalOpen(true);
+  };
+
+  const handleOpenEditArtworkModal = (art) => {
+    setEditingArtwork(art);
+    setArtworkForm({
+      title: art.title || "",
+      image: art.image || "",
+      price: art.price || 350,
+      type: art.type || "Physical",
+      category: art.category || "Physical Prints",
+      availability: art.availability || "In Stock",
+      quantity: art.quantity || 25,
+      dimensions: art.dimensions || "24 x 36 inches",
+      shortDescription: art.shortDescription || "",
+      description: art.description || "",
+    });
+    setArtworkSelectedFile(null);
+    setIsArtworkModalOpen(true);
+  };
+
+  const handleArtworkSubmit = async (e) => {
+    e.preventDefault();
+    setIsSavingArtwork(true);
+
+    try {
+      let imageUrl = artworkForm.image;
+
+      if (artworkUploadMode === "file" && artworkSelectedFile) {
+        const formData = new FormData();
+        formData.append("files", artworkSelectedFile);
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload artwork image file");
+        }
+
+        const uploadData = await uploadRes.json();
+        if (uploadData.files && uploadData.files.length > 0) {
+          imageUrl = uploadData.files[0].src;
+        }
+      }
+
+      if (!imageUrl && !artworkForm.image) {
+        showToast("Please provide an image file or URL", "error");
+        setIsSavingArtwork(false);
+        return;
+      }
+
+      const payload = {
+        ...artworkForm,
+        image: imageUrl || artworkForm.image,
+        price: Number(artworkForm.price) || 350,
+      };
+
+      if (editingArtwork) {
+        // Edit mode (PATCH)
+        const res = await fetch("/api/artworks", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingArtwork.id,
+            ...payload,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setArtworksList((prev) =>
+            prev.map((item) => (item.id === editingArtwork.id ? (data.artwork || { ...item, ...payload }) : item))
+          );
+          showToast(`Updated artwork "${artworkForm.title}"!`);
+          setIsArtworkModalOpen(false);
+        } else {
+          showToast("Failed to update artwork", "error");
+        }
+      } else {
+        // Create mode (POST)
+        const res = await fetch("/api/artworks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.artwork) {
+            setArtworksList((prev) => [data.artwork, ...prev]);
+          }
+          showToast(`Created artwork "${artworkForm.title}"!`);
+          setIsArtworkModalOpen(false);
+        } else {
+          showToast("Failed to create artwork", "error");
+        }
+      }
+    } catch (err) {
+      console.error("Artwork submit error:", err);
+      showToast(err.message || "Failed to save artwork", "error");
+    } finally {
+      setIsSavingArtwork(false);
+    }
+  };
+
+  const handleDeleteArtwork = async () => {
+    if (!artworkDeleteTarget) return;
+
+    try {
+      const res = await fetch(`/api/artworks?id=${artworkDeleteTarget.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setArtworksList((prev) => prev.filter((item) => item.id !== artworkDeleteTarget.id));
+        showToast(`Deleted artwork "${artworkDeleteTarget.title}"`);
+        setArtworkDeleteTarget(null);
+      } else {
+        showToast("Failed to delete artwork", "error");
+      }
+    } catch (err) {
+      console.error("Error deleting artwork:", err);
+      showToast("Error deleting artwork", "error");
     }
   };
 
@@ -576,35 +759,71 @@ export default function AdminPage() {
             </h1>
           </div>
 
-          {/* Action Header Buttons */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          {/* Tab Switcher: Portfolio vs Art Gallery */}
+          <div className="flex items-center space-x-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg">
             <button
-              onClick={() => {
-                setNewImage((prev) => ({
-                  ...prev,
-                  category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
-                }));
-                setIsAddModalOpen(true);
-              }}
-              className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
-            >
-              <Plus size={15} />
-              Add New Image
-            </button>
-
-            <button
-              onClick={handleSaveChanges}
-              disabled={isSaving}
-              className={`px-5 py-2 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 font-medium cursor-pointer shadow-sm ${
-                hasUnsavedChanges
-                  ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
-                  : "bg-neutral-800 text-neutral-300 hover:bg-black"
+              onClick={() => setMainTab("portfolio")}
+              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${
+                mainTab === "portfolio"
+                  ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
+                  : "text-neutral-600 hover:text-black"
               }`}
             >
-              <Save size={15} />
-              {isSaving ? "Saving..." : hasUnsavedChanges ? "Save Changes *" : "Saved"}
+              Portfolio Collections
+            </button>
+            <button
+              onClick={() => setMainTab("art-gallery")}
+              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${
+                mainTab === "art-gallery"
+                  ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
+                  : "text-neutral-600 hover:text-black"
+              }`}
+            >
+              Art Gallery ({artworksList.length})
             </button>
           </div>
+
+          {/* Action Header Buttons */}
+          {mainTab === "portfolio" ? (
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => {
+                  setNewImage((prev) => ({
+                    ...prev,
+                    category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
+                  }));
+                  setIsAddModalOpen(true);
+                }}
+                className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <Plus size={15} />
+                Add Portfolio Image
+              </button>
+
+              <button
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+                className={`px-5 py-2 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 font-medium cursor-pointer shadow-sm ${
+                  hasUnsavedChanges
+                    ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
+                    : "bg-neutral-800 text-neutral-300 hover:bg-black"
+                }`}
+              >
+                <Save size={15} />
+                {isSaving ? "Saving..." : hasUnsavedChanges ? "Save Changes *" : "Saved"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                onClick={handleOpenCreateArtworkModal}
+                className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
+              >
+                <Plus size={15} />
+                Create Artwork
+              </button>
+            </div>
+          )}
 
         </div>
       </header>
@@ -612,8 +831,163 @@ export default function AdminPage() {
       {/* Main Admin Workspace */}
       <main className="w-full px-4 sm:px-8 py-8">
         
-        {/* Workspace Toolbar: Search & Tab Stats */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
+        {mainTab === "art-gallery" ? (
+          /* ART GALLERY MANAGEMENT VIEW */
+          <div className="space-y-8">
+            {/* Toolbar for Art Gallery */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+                {["All", "Art", "Digital Prints", "Physical Prints"].map((cat) => {
+                  const isActive = artCategoryFilter === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setArtCategoryFilter(cat)}
+                      className={`px-4 py-1.5 text-xs uppercase tracking-widest rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                        isActive
+                          ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
+                          : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search Input */}
+              <div className="relative w-full md:w-72">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search artwork title..."
+                  value={artSearchQuery}
+                  onChange={(e) => setArtSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#faf8f5] border border-[#e6e2d8] rounded-full text-xs text-[#1c1a17] placeholder:text-neutral-400 focus:outline-none focus:border-[#1c1a17]"
+                />
+              </div>
+            </div>
+
+            {/* Artworks List Grid */}
+            {artworksList.filter((art) => {
+              const matchCat =
+                artCategoryFilter === "All" ||
+                art.category === artCategoryFilter ||
+                (artCategoryFilter === "Art" && art.category.includes("Art"));
+              const matchSearch =
+                !artSearchQuery ||
+                art.title.toLowerCase().includes(artSearchQuery.toLowerCase()) ||
+                art.shortDescription?.toLowerCase().includes(artSearchQuery.toLowerCase());
+              return matchCat && matchSearch;
+            }).length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {artworksList
+                  .filter((art) => {
+                    const matchCat =
+                      artCategoryFilter === "All" ||
+                      art.category === artCategoryFilter ||
+                      (artCategoryFilter === "Art" && art.category.includes("Art"));
+                    const matchSearch =
+                      !artSearchQuery ||
+                      art.title.toLowerCase().includes(artSearchQuery.toLowerCase()) ||
+                      art.shortDescription?.toLowerCase().includes(artSearchQuery.toLowerCase());
+                    return matchCat && matchSearch;
+                  })
+                  .map((art) => (
+                    <div
+                      key={art.id}
+                      className="bg-[#faf8f5] border border-[#e6e2d8] rounded-xl overflow-hidden shadow-sm flex flex-col justify-between group hover:shadow-md transition-all"
+                    >
+                      <div>
+                        {/* Thumbnail */}
+                        <div className="relative aspect-[4/5] w-full bg-neutral-200 overflow-hidden">
+                          <Image
+                            src={art.image}
+                            alt={art.title}
+                            fill
+                            sizes="300px"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <span
+                            className={`absolute top-2 left-2 text-[9px] uppercase tracking-widest font-semibold px-2.5 py-0.5 rounded-full backdrop-blur-md border ${
+                              art.type === "Digital"
+                                ? "bg-[#1c1a17]/80 text-[#f5f2eb]"
+                                : "bg-[#A97C5B]/90 text-white border-[#A97C5B]"
+                            }`}
+                          >
+                            {art.type}
+                          </span>
+                          <span className="absolute top-2 right-2 text-[10px] font-serif font-bold bg-[#faf8f5]/90 text-[#1c1a17] px-2.5 py-0.5 rounded backdrop-blur-md shadow-xs border border-[#e6e2d8]">
+                            ${art.price}
+                          </span>
+                        </div>
+
+                        {/* Details */}
+                        <div className="p-4 space-y-2">
+                          <span className="text-[9px] uppercase tracking-widest text-[#A97C5B] font-semibold block">
+                            {art.category}
+                          </span>
+                          <h3 className="text-sm font-serif font-semibold text-[#1c1a17] uppercase tracking-wider line-clamp-1">
+                            {art.title}
+                          </h3>
+                          <p className="text-xs text-neutral-500 line-clamp-2 font-light">
+                            {art.shortDescription || art.description}
+                          </p>
+                          <div className="pt-2 text-[10px] text-neutral-400 flex items-center justify-between border-t border-[#e6e2d8]/60">
+                            <span>{art.availability}</span>
+                            <span>{art.dimensions}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="p-4 pt-0 flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditArtworkModal(art)}
+                          className="flex-1 py-2 bg-[#1c1a17] hover:bg-[#A97C5B] text-[#f5f2eb] text-xs uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1.5 font-medium cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => setArtworkDeleteTarget(art)}
+                          className="p-2 border border-red-200 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                          title="Delete artwork"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                        <Link
+                          href={`/art-gallery/${art.id}`}
+                          target="_blank"
+                          className="p-2 border border-[#d8d3c5] text-neutral-600 hover:text-black rounded transition-colors cursor-pointer"
+                          title="View artwork on website"
+                        >
+                          <ExternalLink size={15} />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 border border-dashed border-[#e6e2d8] rounded-xl text-center p-8 space-y-3">
+                <p className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+                  No artworks found matching criteria.
+                </p>
+                <button
+                  onClick={handleOpenCreateArtworkModal}
+                  className="text-xs uppercase tracking-wider text-[#A97C5B] underline hover:text-[#1c1a17]"
+                >
+                  Create First Artwork
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* PORTFOLIO MANAGEMENT VIEW */
+          <>
+            {/* Workspace Toolbar: Search & Tab Stats */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
           
           {/* Category Tabs Filter */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
@@ -939,7 +1313,8 @@ export default function AdminPage() {
             </button>
           </div>
         )}
-
+      </>
+    )}
       </main>
 
       {/* FULL VIEW IMAGE PREVIEW MODAL */}
@@ -1300,6 +1675,306 @@ export default function AdminPage() {
                 >
                   <Trash2 size={14} />
                   Confirm & Remove
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CREATE / EDIT ARTWORK MODAL */}
+      <AnimatePresence>
+        {isArtworkModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden my-8"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-[#E2DDD3] border-b border-[#d8d3c5]">
+                <h2 className="text-base font-serif uppercase tracking-widest font-semibold text-[#1c1a17]">
+                  {editingArtwork ? "Edit Artwork" : "Create New Art Gallery Artwork"}
+                </h2>
+                <button
+                  onClick={() => setIsArtworkModalOpen(false)}
+                  className="p-1 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleArtworkSubmit} className="p-6 space-y-5 text-xs">
+                {/* Title */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                    Artwork Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Serenade in Bronze & Shadow"
+                    value={artworkForm.title}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, title: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                  />
+                </div>
+
+                {/* Upload Mode Selector */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">
+                      Artwork Image Source *
+                    </label>
+                    <div className="flex border border-[#d8d3c5] rounded overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setArtworkUploadMode("file")}
+                        className={`px-3 py-1 text-[10px] uppercase tracking-wider font-semibold cursor-pointer ${
+                          artworkUploadMode === "file" ? "bg-[#1c1a17] text-[#f5f2eb]" : "bg-white text-neutral-600"
+                        }`}
+                      >
+                        Upload File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArtworkUploadMode("url")}
+                        className={`px-3 py-1 text-[10px] uppercase tracking-wider font-semibold cursor-pointer ${
+                          artworkUploadMode === "url" ? "bg-[#1c1a17] text-[#f5f2eb]" : "bg-white text-neutral-600"
+                        }`}
+                      >
+                        Image URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {artworkUploadMode === "file" ? (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        required={!editingArtwork && !artworkForm.image}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setArtworkSelectedFile(e.target.files[0]);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                      />
+                      {artworkSelectedFile && (
+                        <p className="mt-1 text-[10px] text-neutral-500 font-mono">
+                          Selected file: {artworkSelectedFile.name} ({(artworkSelectedFile.size / 1024).toFixed(0)} KB)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/..."
+                      value={artworkForm.image}
+                      onChange={(e) => setArtworkForm({ ...artworkForm, image: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                    />
+                  )}
+                </div>
+
+                {/* Grid: Type & Category & Price & Availability */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                      Format Type *
+                    </label>
+                    <select
+                      value={artworkForm.type}
+                      onChange={(e) =>
+                        setArtworkForm({
+                          ...artworkForm,
+                          type: e.target.value,
+                          category: e.target.value === "Digital" ? "Digital Prints" : "Physical Prints",
+                        })
+                      }
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                    >
+                      <option value="Physical">Physical Print</option>
+                      <option value="Digital">Digital Master File</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                      Artwork Category *
+                    </label>
+                    <select
+                      value={artworkForm.category}
+                      onChange={(e) => setArtworkForm({ ...artworkForm, category: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                    >
+                      <option value="Art">Art</option>
+                      <option value="Digital Prints">Digital Prints</option>
+                      <option value="Physical Prints">Physical Prints</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                      Starting Price ($ USD) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={artworkForm.price}
+                      onChange={(e) => setArtworkForm({ ...artworkForm, price: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                      Availability Status *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. In Stock, Limited Edition (1/25), Instant Download"
+                      value={artworkForm.availability}
+                      onChange={(e) => setArtworkForm({ ...artworkForm, availability: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                    />
+                  </div>
+                </div>
+
+                {/* Dimensions */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                    Dimensions / Print Format Specs
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 24 x 36 inches or 8K Ultra-HD Resolution"
+                    value={artworkForm.dimensions}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, dimensions: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                  />
+                </div>
+
+                {/* Short Description */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                    Short Description (Excerpt)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Brief 1-2 sentence summary for gallery cards"
+                    value={artworkForm.shortDescription}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, shortDescription: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                  />
+                </div>
+
+                {/* Full Description */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
+                    Full Description / Artist Statement
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Detailed narrative, artistic vision, and story behind the artwork..."
+                    value={artworkForm.description}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, description: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                  />
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e6e2d8]">
+                  <button
+                    type="button"
+                    onClick={() => setIsArtworkModalOpen(false)}
+                    disabled={isSavingArtwork}
+                    className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingArtwork}
+                    className="px-5 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded font-medium transition-colors cursor-pointer flex items-center gap-2"
+                  >
+                    {isSavingArtwork ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>{editingArtwork ? "Save Artwork Changes" : "Create Artwork"}</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE ARTWORK CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {artworkDeleteTarget && (
+          <div
+            onClick={() => setArtworkDeleteTarget(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-red-900/10 border-b border-red-200/60">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-full text-red-700">
+                    <AlertCircle size={20} />
+                  </div>
+                  <h2 className="text-sm font-serif uppercase tracking-widest font-bold text-red-950">
+                    Delete Artwork
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setArtworkDeleteTarget(null)}
+                  className="p-1 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 text-xs text-neutral-700 space-y-3">
+                <p className="leading-relaxed">
+                  Are you sure you want to permanently delete{" "}
+                  <strong className="text-[#1c1a17] font-semibold font-serif uppercase tracking-wide">
+                    &quot;{artworkDeleteTarget.title}&quot;
+                  </strong>{" "}
+                  from the Art Gallery?
+                </p>
+                <p className="text-[11px] text-neutral-500 font-light">
+                  This action will remove the artwork from the gallery catalog immediately.
+                </p>
+              </div>
+
+              <div className="px-6 py-4 bg-[#E2DDD3] border-t border-[#d8d3c5] flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setArtworkDeleteTarget(null)}
+                  className="px-4 py-2 text-xs uppercase tracking-widest rounded border border-neutral-300 hover:bg-neutral-200 text-neutral-700 font-medium transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteArtwork}
+                  className="px-5 py-2 text-xs uppercase tracking-widest rounded bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  Delete Artwork
                 </button>
               </div>
             </motion.div>
