@@ -23,6 +23,9 @@ export default function Footer() {
           <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
             Art Gallery
           </Link>
+          <Link href="/workshop" className="hover:text-black transition-colors duration-300">
+            Workshop
+          </Link>
           <Link href="/about" className="hover:text-black transition-colors duration-300">
             About
           </Link>

@@ -15,6 +15,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Art Gallery", href: "/art-gallery" },
+    { name: "Workshop", href: "/workshop" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];
@@ -50,7 +51,7 @@ export default function Navbar() {
     : "relative flex items-center justify-center p-2 text-neutral-600 hover:text-black transition-colors duration-300 cursor-pointer";
 
   const getNavLinkClass = (linkHref) => {
-    const isActive = pathname === linkHref || (linkHref.startsWith("/art-gallery") && pathname.startsWith("/art-gallery"));
+    const isActive = pathname === linkHref || (linkHref !== "/" && pathname.startsWith(linkHref));
     if (isHome) {
       return `text-xs uppercase tracking-[0.2em] transition-colors duration-300 hover:text-white ${
         isActive ? "text-white font-semibold text-shadow-editorial" : "text-[#F8F5F1]/75 font-medium"

@@ -21,7 +21,20 @@ import {
   Eye,
   ExternalLink,
   Pencil,
-  Check
+  Check,
+  Calendar,
+  Users,
+  DollarSign,
+  Download,
+  Filter,
+  UserPlus,
+  Clock,
+  MapPin,
+  ShieldCheck,
+  Ticket,
+  User,
+  Mail,
+  Phone
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -60,7 +73,7 @@ export default function AdminPage() {
 
   const [modifiedFieldsMap, setModifiedFieldsMap] = useState({});
 
-  // Main Admin Dashboard Tab: 'portfolio' | 'art-gallery'
+  // Main Admin Dashboard Tab: 'portfolio' | 'art-gallery' | 'workshop'
   const [mainTab, setMainTab] = useState("portfolio");
 
   // Art Gallery State
@@ -85,6 +98,123 @@ export default function AdminPage() {
     dimensions: "24 x 36 inches",
     shortDescription: "",
     description: "",
+  });
+
+  // Workshop Management State (Frontend Only)
+  const [workshopData, setWorkshopData] = useState({
+    id: "wrk-2026-masterclass",
+    title: "Mastering Studio & Environmental Light",
+    subtitle: "Sculpting Shadow, Mood & Emotion in Editorial Portraiture",
+    badge: "OFFLINE INTENSIVE MASTERCLASS",
+    date: "October 18 – 19, 2026",
+    time: "10:00 AM – 05:00 PM IST",
+    duration: "2 Full Days (14 Hours)",
+    venue: "G. Venket Ram Photography Studios, Chennai",
+    fee: 24500,
+    totalSeats: 15,
+    availableSeats: 4,
+    instructorName: "G. Venket Ram",
+    status: "Active",
+  });
+
+  const [registrationsList, setRegistrationsList] = useState([
+    {
+      tokenNumber: "WRK-2026-00125",
+      fullName: "Ananya Sharma",
+      email: "ananya.sharma@example.com",
+      phone: "+91 98765 43210",
+      cityAddress: "Bengaluru, Karnataka",
+      participantCount: 1,
+      paidAmount: 24500,
+      paymentStatus: "SUCCESSFUL",
+      paymentMethod: "UPI",
+      registeredAt: "2026-08-20 14:30 IST",
+      checkedIn: true,
+      cameraGear: "Sony A7 IV with 85mm f/1.4",
+      specialRequests: "Vegetarian lunch",
+    },
+    {
+      tokenNumber: "WRK-2026-00126",
+      fullName: "Rohan Varma",
+      email: "rohan.v@example.com",
+      phone: "+91 98123 45678",
+      cityAddress: "Chennai, Tamil Nadu",
+      participantCount: 2,
+      paidAmount: 49000,
+      paymentStatus: "SUCCESSFUL",
+      paymentMethod: "CARD",
+      registeredAt: "2026-08-21 10:15 IST",
+      checkedIn: false,
+      cameraGear: "Canon EOS R5 with 24-70mm f/2.8",
+      specialRequests: "None",
+    },
+    {
+      tokenNumber: "WRK-2026-00127",
+      fullName: "Priya Nair",
+      email: "priya.nair@example.com",
+      phone: "+91 99887 76655",
+      cityAddress: "Kochi, Kerala",
+      participantCount: 1,
+      paidAmount: 24500,
+      paymentStatus: "SUCCESSFUL",
+      paymentMethod: "NETBANKING",
+      registeredAt: "2026-08-22 18:45 IST",
+      checkedIn: false,
+      cameraGear: "Nikon Z8 with 50mm f/1.2",
+      specialRequests: "Wheelchair access",
+    },
+    {
+      tokenNumber: "WRK-2026-00128",
+      fullName: "Vikramaditya Roy",
+      email: "vikram.roy@example.com",
+      phone: "+91 97654 32109",
+      cityAddress: "Mumbai, Maharashtra",
+      participantCount: 1,
+      paidAmount: 24500,
+      paymentStatus: "SUCCESSFUL",
+      paymentMethod: "UPI",
+      registeredAt: "2026-08-24 11:20 IST",
+      checkedIn: false,
+      cameraGear: "Fujifilm GFX 100 II",
+      specialRequests: "None",
+    },
+    {
+      tokenNumber: "WRK-2026-00129",
+      fullName: "Siddharth Menon",
+      email: "siddharth.m@example.com",
+      phone: "+91 94433 22110",
+      cityAddress: "Hyderabad, Telangana",
+      participantCount: 2,
+      paidAmount: 49000,
+      paymentStatus: "PENDING",
+      paymentMethod: "CARD",
+      registeredAt: "2026-08-26 16:05 IST",
+      checkedIn: false,
+      cameraGear: "Sony A1 with 70-200mm f/2.8",
+      specialRequests: "Late arrival on Day 1",
+    },
+  ]);
+
+  const [regSearchQuery, setRegSearchQuery] = useState("");
+  const [regStatusFilter, setRegStatusFilter] = useState("All");
+
+  // Workshop Modals
+  const [isEditWorkshopModalOpen, setIsEditWorkshopModalOpen] = useState(false);
+  const [isAddRegModalOpen, setIsAddRegModalOpen] = useState(false);
+  const [selectedRegDetail, setSelectedRegDetail] = useState(null);
+  const [deleteRegTarget, setDeleteRegTarget] = useState(null);
+
+  // New Manual Registration Form State
+  const [manualRegForm, setManualRegForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    cityAddress: "Chennai",
+    participantCount: 1,
+    paymentStatus: "SUCCESSFUL",
+    paymentMethod: "UPI",
+    cameraGear: "",
+    specialRequests: "",
   });
 
   // Load Initial Portfolio Data & Artworks
@@ -262,6 +392,112 @@ export default function AdminPage() {
       console.error("Error deleting artwork:", err);
       showToast("Error deleting artwork", "error");
     }
+  };
+
+  // --- Workshop Handlers (Frontend State) ---
+  const handleToggleCheckIn = (tokenNumber) => {
+    setRegistrationsList((prev) =>
+      prev.map((item) =>
+        item.tokenNumber === tokenNumber ? { ...item, checkedIn: !item.checkedIn } : item
+      )
+    );
+    const target = registrationsList.find((r) => r.tokenNumber === tokenNumber);
+    const newStatus = target && !target.checkedIn ? "Checked In" : "Pending Check-In";
+    showToast(`Updated ${target?.fullName || "Participant"} status to: ${newStatus}`);
+  };
+
+  const handleSaveWorkshopDetails = (e) => {
+    e.preventDefault();
+    setIsEditWorkshopModalOpen(false);
+    showToast("Workshop masterclass settings updated!");
+  };
+
+  const handleAddManualRegistration = (e) => {
+    e.preventDefault();
+    if (!manualRegForm.fullName || !manualRegForm.email || !manualRegForm.phone) {
+      showToast("Please fill in required fields (Name, Email, Phone)", "error");
+      return;
+    }
+
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    const newToken = `WRK-2026-${randomNum}`;
+    const seats = Number(manualRegForm.participantCount) || 1;
+    const amount = workshopData.fee * seats;
+
+    const newReg = {
+      tokenNumber: newToken,
+      fullName: manualRegForm.fullName,
+      email: manualRegForm.email,
+      phone: manualRegForm.phone,
+      cityAddress: manualRegForm.cityAddress || "Chennai",
+      participantCount: seats,
+      paidAmount: amount,
+      paymentStatus: manualRegForm.paymentStatus,
+      paymentMethod: manualRegForm.paymentMethod,
+      registeredAt: new Date().toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }),
+      checkedIn: false,
+      cameraGear: manualRegForm.cameraGear || "N/A",
+      specialRequests: manualRegForm.specialRequests || "None",
+    };
+
+    setRegistrationsList((prev) => [newReg, ...prev]);
+    setWorkshopData((prev) => ({
+      ...prev,
+      availableSeats: Math.max(0, prev.availableSeats - seats),
+    }));
+
+    setIsAddRegModalOpen(false);
+    setManualRegForm({
+      fullName: "",
+      email: "",
+      phone: "",
+      cityAddress: "Chennai",
+      participantCount: 1,
+      paymentStatus: "SUCCESSFUL",
+      paymentMethod: "UPI",
+      cameraGear: "",
+      specialRequests: "",
+    });
+
+    showToast(`Added manual registration for ${newReg.fullName} (${newToken})`);
+  };
+
+  const handleDeleteRegistration = () => {
+    if (!deleteRegTarget) return;
+    setRegistrationsList((prev) => prev.filter((r) => r.tokenNumber !== deleteRegTarget.tokenNumber));
+    setWorkshopData((prev) => ({
+      ...prev,
+      availableSeats: Math.min(prev.totalSeats, prev.availableSeats + (deleteRegTarget.participantCount || 1)),
+    }));
+    showToast(`Cancelled registration ${deleteRegTarget.tokenNumber}`);
+    setDeleteRegTarget(null);
+  };
+
+  const handleExportRegistrationsCSV = () => {
+    const headers = ["Token", "Full Name", "Email", "Phone", "City", "Seats", "Paid Amount", "Status", "Payment Method", "Checked In"];
+    const rows = registrationsList.map((r) => [
+      r.tokenNumber,
+      `"${r.fullName}"`,
+      r.email,
+      r.phone,
+      `"${r.cityAddress}"`,
+      r.participantCount,
+      r.paidAmount,
+      r.paymentStatus,
+      r.paymentMethod,
+      r.checkedIn ? "YES" : "NO",
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `WRK-2026-Registrations-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("Downloaded Registrations CSV");
   };
 
   const showToast = (message, type = "success") => {
@@ -759,7 +995,7 @@ export default function AdminPage() {
             </h1>
           </div>
 
-          {/* Tab Switcher: Portfolio vs Art Gallery */}
+          {/* Tab Switcher: Portfolio vs Art Gallery vs Workshop */}
           <div className="flex items-center space-x-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg">
             <button
               onClick={() => setMainTab("portfolio")}
@@ -780,6 +1016,16 @@ export default function AdminPage() {
               }`}
             >
               Art Gallery ({artworksList.length})
+            </button>
+            <button
+              onClick={() => setMainTab("workshop")}
+              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${
+                mainTab === "workshop"
+                  ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
+                  : "text-neutral-600 hover:text-black"
+              }`}
+            >
+              Workshops & Registrations ({registrationsList.length})
             </button>
           </div>
 
@@ -810,17 +1056,34 @@ export default function AdminPage() {
                 }`}
               >
                 <Save size={15} />
-                {isSaving ? "Saving..." : hasUnsavedChanges ? "Save Changes *" : "Saved"}
+                {isSaving ? "Saving..." : "Save Changes"}
               </button>
             </div>
-          ) : (
+          ) : mainTab === "art-gallery" ? (
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
               <button
                 onClick={handleOpenCreateArtworkModal}
                 className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
               >
                 <Plus size={15} />
-                Create Artwork
+                Add Artwork Item
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => setIsEditWorkshopModalOpen(true)}
+                className="px-4 py-2 bg-[#E2DDD3] text-[#1c1a17] border border-[#d8d3c5] hover:bg-neutral-200 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <Pencil size={15} />
+                Masterclass Settings
+              </button>
+              <button
+                onClick={() => setIsAddRegModalOpen(true)}
+                className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
+              >
+                <UserPlus size={15} />
+                New Registration
               </button>
             </div>
           )}
@@ -835,153 +1098,342 @@ export default function AdminPage() {
           /* ART GALLERY MANAGEMENT VIEW */
           <div className="space-y-8">
             {/* Toolbar for Art Gallery */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-                {["All", "Art", "Digital Prints", "Physical Prints"].map((cat) => {
-                  const isActive = artCategoryFilter === cat;
-                  return (
+            <div className="bg-[#faf8f5] p-6 rounded-lg border border-[#e6e2d8] shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                  <input
+                    type="text"
+                    placeholder="Search artworks..."
+                    value={artSearchQuery}
+                    onChange={(e) => setArtSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                  {["All", "Physical Prints", "Digital Prints"].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setArtCategoryFilter(cat)}
-                      className={`px-4 py-1.5 text-xs uppercase tracking-widest rounded-full transition-all cursor-pointer whitespace-nowrap ${
-                        isActive
-                          ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
-                          : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
+                      className={`px-3 py-1.5 text-[10px] uppercase tracking-wider rounded font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                        artCategoryFilter === cat
+                          ? "bg-[#1c1a17] text-white"
+                          : "bg-white border border-[#e6e2d8] text-neutral-600 hover:text-black"
                       }`}
                     >
                       {cat}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
-              {/* Search Input */}
-              <div className="relative w-full md:w-72">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search artwork title..."
-                  value={artSearchQuery}
-                  onChange={(e) => setArtSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-[#faf8f5] border border-[#e6e2d8] rounded-full text-xs text-[#1c1a17] placeholder:text-neutral-400 focus:outline-none focus:border-[#1c1a17]"
-                />
-              </div>
+              <span className="text-xs text-neutral-500 uppercase tracking-widest font-medium">
+                Total Items: {artworksList.length}
+              </span>
             </div>
 
             {/* Artworks List Grid */}
-            {artworksList.filter((art) => {
-              const matchCat =
-                artCategoryFilter === "All" ||
-                art.category === artCategoryFilter ||
-                (artCategoryFilter === "Art" && art.category.includes("Art"));
-              const matchSearch =
-                !artSearchQuery ||
-                art.title.toLowerCase().includes(artSearchQuery.toLowerCase()) ||
-                art.shortDescription?.toLowerCase().includes(artSearchQuery.toLowerCase());
-              return matchCat && matchSearch;
-            }).length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {artworksList
-                  .filter((art) => {
-                    const matchCat =
-                      artCategoryFilter === "All" ||
-                      art.category === artCategoryFilter ||
-                      (artCategoryFilter === "Art" && art.category.includes("Art"));
-                    const matchSearch =
-                      !artSearchQuery ||
-                      art.title.toLowerCase().includes(artSearchQuery.toLowerCase()) ||
-                      art.shortDescription?.toLowerCase().includes(artSearchQuery.toLowerCase());
-                    return matchCat && matchSearch;
-                  })
-                  .map((art) => (
-                    <div
-                      key={art.id}
-                      className="bg-[#faf8f5] border border-[#e6e2d8] rounded-xl overflow-hidden shadow-sm flex flex-col justify-between group hover:shadow-md transition-all"
-                    >
-                      <div>
-                        {/* Thumbnail */}
-                        <div className="relative aspect-[4/5] w-full bg-neutral-200 overflow-hidden">
-                          <Image
-                            src={art.image}
-                            alt={art.title}
-                            fill
-                            sizes="300px"
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <span
-                            className={`absolute top-2 left-2 text-[9px] uppercase tracking-widest font-semibold px-2.5 py-0.5 rounded-full backdrop-blur-md border ${
-                              art.type === "Digital"
-                                ? "bg-[#1c1a17]/80 text-[#f5f2eb]"
-                                : "bg-[#A97C5B]/90 text-white border-[#A97C5B]"
-                            }`}
-                          >
-                            {art.type}
-                          </span>
-                          <span className="absolute top-2 right-2 text-[10px] font-serif font-bold bg-[#faf8f5]/90 text-[#1c1a17] px-2.5 py-0.5 rounded backdrop-blur-md shadow-xs border border-[#e6e2d8]">
-                            ${art.price}
-                          </span>
-                        </div>
-
-                        {/* Details */}
-                        <div className="p-4 space-y-2">
-                          <span className="text-[9px] uppercase tracking-widest text-[#A97C5B] font-semibold block">
-                            {art.category}
-                          </span>
-                          <h3 className="text-sm font-serif font-semibold text-[#1c1a17] uppercase tracking-wider line-clamp-1">
-                            {art.title}
-                          </h3>
-                          <p className="text-xs text-neutral-500 line-clamp-2 font-light">
-                            {art.shortDescription || art.description}
-                          </p>
-                          <div className="pt-2 text-[10px] text-neutral-400 flex items-center justify-between border-t border-[#e6e2d8]/60">
-                            <span>{art.availability}</span>
-                            <span>{art.dimensions}</span>
-                          </div>
-                        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {artworksList
+                .filter((art) => {
+                  const matchesCat = artCategoryFilter === "All" || art.category === artCategoryFilter;
+                  const matchesSearch =
+                    !artSearchQuery ||
+                    art.title.toLowerCase().includes(artSearchQuery.toLowerCase()) ||
+                    art.category.toLowerCase().includes(artSearchQuery.toLowerCase());
+                  return matchesCat && matchesSearch;
+                })
+                .map((art) => (
+                  <div
+                    key={art.id}
+                    className="bg-[#faf8f5] border border-[#e6e2d8] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                  >
+                    <div className="relative h-56 w-full bg-neutral-200 overflow-hidden group">
+                      <Image
+                        src={art.image}
+                        alt={art.title}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                      />
+                      <div className="absolute top-2 left-2 bg-[#1c1a17]/85 text-[#f5f2eb] px-2.5 py-1 rounded text-[10px] uppercase tracking-widest font-semibold flex items-center gap-1 backdrop-blur-xs">
+                        <Tag size={10} />
+                        {art.type || "Art"}
                       </div>
-
-                      {/* Actions */}
-                      <div className="p-4 pt-0 flex items-center gap-2">
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
                         <button
                           onClick={() => handleOpenEditArtworkModal(art)}
-                          className="flex-1 py-2 bg-[#1c1a17] hover:bg-[#A97C5B] text-[#f5f2eb] text-xs uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1.5 font-medium cursor-pointer"
+                          className="p-2 bg-[#1c1a17]/90 text-white rounded hover:bg-black transition-colors shadow-sm cursor-pointer"
+                          title="Edit Artwork"
                         >
-                          <Pencil size={13} />
-                          <span>Edit</span>
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => setArtworkDeleteTarget(art)}
-                          className="p-2 border border-red-200 text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          title="Delete artwork"
+                          className="p-2 bg-red-600/90 text-white rounded hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                          title="Delete Artwork"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
-                        <Link
-                          href={`/art-gallery/${art.id}`}
-                          target="_blank"
-                          className="p-2 border border-[#d8d3c5] text-neutral-600 hover:text-black rounded transition-colors cursor-pointer"
-                          title="View artwork on website"
-                        >
-                          <ExternalLink size={15} />
-                        </Link>
                       </div>
                     </div>
-                  ))}
+
+                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h3 className="font-serif font-semibold text-sm text-[#1c1a17] line-clamp-1">{art.title}</h3>
+                        <p className="text-xs text-neutral-500 line-clamp-2 mt-1">{art.shortDescription}</p>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-[#e6e2d8] pt-3 text-xs font-semibold text-[#1c1a17]">
+                        <span className="font-serif font-bold text-sm text-[#A97C5B]">₹{art.price}</span>
+                        <span className="text-[10px] uppercase tracking-widest text-neutral-500">{art.availability}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        ) : mainTab === "workshop" ? (
+          /* WORKSHOP & REGISTRATIONS MANAGEMENT VIEW */
+          <div className="space-y-8">
+            
+            {/* Top Summary Metrics Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-[#faf8f5] p-6 rounded-xl border border-[#d8d3c5] shadow-xs flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold tracking-widest text-neutral-500 block">Total Revenue</span>
+                  <span className="text-2xl font-serif font-bold text-[#1c1a17]">
+                    ₹{registrationsList.filter((r) => r.paymentStatus === "SUCCESSFUL").reduce((acc, curr) => acc + curr.paidAmount, 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="p-3 bg-[#E2DDD3] rounded-lg text-[#A97C5B]">
+                  <DollarSign size={24} />
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-64 border border-dashed border-[#e6e2d8] rounded-xl text-center p-8 space-y-3">
-                <p className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-                  No artworks found matching criteria.
-                </p>
+
+              <div className="bg-[#faf8f5] p-6 rounded-xl border border-[#d8d3c5] shadow-xs flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold tracking-widest text-neutral-500 block">Total Registrations</span>
+                  <span className="text-2xl font-serif font-bold text-[#1c1a17]">{registrationsList.length} Attendees</span>
+                </div>
+                <div className="p-3 bg-[#E2DDD3] rounded-lg text-[#A97C5B]">
+                  <Users size={24} />
+                </div>
+              </div>
+
+              <div className="bg-[#faf8f5] p-6 rounded-xl border border-[#d8d3c5] shadow-xs flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold tracking-widest text-neutral-500 block">Seats Remaining</span>
+                  <span className="text-2xl font-serif font-bold text-[#A97C5B]">{workshopData.availableSeats} of {workshopData.totalSeats}</span>
+                </div>
+                <div className="p-3 bg-[#E2DDD3] rounded-lg text-[#A97C5B]">
+                  <Ticket size={24} />
+                </div>
+              </div>
+
+              <div className="bg-[#faf8f5] p-6 rounded-xl border border-[#d8d3c5] shadow-xs flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold tracking-widest text-neutral-500 block">Masterclass Status</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs uppercase tracking-wider font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <CheckCircle2 size={13} /> {workshopData.status}
+                  </span>
+                </div>
+                <div className="p-3 bg-[#E2DDD3] rounded-lg text-[#A97C5B]">
+                  <ShieldCheck size={24} />
+                </div>
+              </div>
+            </div>
+
+            {/* Active Masterclass Details Banner Card */}
+            <div className="bg-[#1c1a17] text-[#f5f2eb] p-6 sm:p-8 rounded-xl border border-[#332f2b] shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest bg-[#A97C5B] text-white">
+                    {workshopData.badge}
+                  </span>
+                  <span className="text-xs text-neutral-400 font-mono">ID: {workshopData.id}</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold">{workshopData.title}</h2>
+                <p className="text-xs text-neutral-300 font-light">{workshopData.subtitle}</p>
+                
+                <div className="flex flex-wrap gap-4 text-xs text-neutral-300 pt-2 font-light">
+                  <span className="flex items-center gap-1.5"><Calendar size={14} className="text-[#A97C5B]" /> {workshopData.date}</span>
+                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-[#A97C5B]" /> {workshopData.time}</span>
+                  <span className="flex items-center gap-1.5"><MapPin size={14} className="text-[#A97C5B]" /> {workshopData.venue}</span>
+                </div>
+              </div>
+
+              <div className="bg-[#2b2723] p-5 rounded-lg border border-[#443e39] text-right space-y-3 w-full lg:w-auto">
+                <div>
+                  <span className="text-[10px] uppercase tracking-widest text-neutral-400 block">Registration Fee</span>
+                  <span className="text-2xl font-serif font-bold text-[#A97C5B]">₹{workshopData.fee.toLocaleString("en-IN")}</span>
+                </div>
                 <button
-                  onClick={handleOpenCreateArtworkModal}
-                  className="text-xs uppercase tracking-wider text-[#A97C5B] underline hover:text-[#1c1a17]"
+                  onClick={() => setIsEditWorkshopModalOpen(true)}
+                  className="w-full px-4 py-2 bg-[#A97C5B] hover:bg-[#966b4c] text-white text-xs uppercase tracking-widest rounded font-medium transition-colors cursor-pointer"
                 >
-                  Create First Artwork
+                  Edit Masterclass Details
                 </button>
               </div>
-            )}
+            </div>
+
+            {/* Registration List Management Table */}
+            <div className="bg-[#faf8f5] border border-[#d8d3c5] rounded-xl overflow-hidden shadow-xs space-y-4">
+              
+              {/* Table Header & Search Filter Bar */}
+              <div className="p-6 border-b border-[#d8d3c5] flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#E2DDD3]/40">
+                <div>
+                  <h3 className="text-lg font-serif font-semibold text-[#1c1a17]">
+                    Participant Registrations ({registrationsList.length})
+                  </h3>
+                  <p className="text-xs text-neutral-500 font-light">
+                    Manage attendee bookings, check-in status, and payment logs.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  {/* Search Input */}
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search size={15} className="absolute left-3 top-2.5 text-neutral-400" />
+                    <input
+                      type="text"
+                      placeholder="Search token, name, email..."
+                      value={regSearchQuery}
+                      onChange={(e) => setRegSearchQuery(e.target.value)}
+                      className="pl-9 pr-4 py-2 text-xs bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B] w-full sm:w-60"
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <select
+                    value={regStatusFilter}
+                    onChange={(e) => setRegStatusFilter(e.target.value)}
+                    className="px-3 py-2 text-xs bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="SUCCESSFUL">Successful</option>
+                    <option value="PENDING">Pending</option>
+                  </select>
+
+                  {/* CSV Export Button */}
+                  <button
+                    onClick={handleExportRegistrationsCSV}
+                    className="px-3 py-2 bg-white hover:bg-neutral-100 text-neutral-700 border border-[#d8d3c5] rounded text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Export CSV List"
+                  >
+                    <Download size={14} />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Registrations Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#E2DDD3] text-[#1c1a17] uppercase tracking-wider font-semibold text-[10px] border-b border-[#d8d3c5]">
+                    <tr>
+                      <th className="py-3 px-4">Token Number</th>
+                      <th className="py-3 px-4">Participant Name</th>
+                      <th className="py-3 px-4">Contact Info</th>
+                      <th className="py-3 px-4 text-center">Seats</th>
+                      <th className="py-3 px-4">Paid Amount</th>
+                      <th className="py-3 px-4">Payment Status</th>
+                      <th className="py-3 px-4 text-center">Studio Check-In</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#d8d3c5] text-neutral-700 font-light">
+                    {registrationsList
+                      .filter((reg) => {
+                        const matchesSearch =
+                          !regSearchQuery ||
+                          reg.tokenNumber.toLowerCase().includes(regSearchQuery.toLowerCase()) ||
+                          reg.fullName.toLowerCase().includes(regSearchQuery.toLowerCase()) ||
+                          reg.email.toLowerCase().includes(regSearchQuery.toLowerCase());
+                        const matchesStatus = regStatusFilter === "All" || reg.paymentStatus === regStatusFilter;
+                        return matchesSearch && matchesStatus;
+                      })
+                      .map((reg) => (
+                        <tr key={reg.tokenNumber} className="hover:bg-[#f5f2eb] transition-colors">
+                          
+                          {/* Token */}
+                          <td className="py-4 px-4 font-mono font-bold text-[#1c1a17]">
+                            {reg.tokenNumber}
+                          </td>
+
+                          {/* Participant Name */}
+                          <td className="py-4 px-4 font-semibold text-[#1c1a17]">
+                            {reg.fullName}
+                            <span className="block text-[10px] text-neutral-500 font-normal">{reg.cityAddress}</span>
+                          </td>
+
+                          {/* Contact Info */}
+                          <td className="py-4 px-4 space-y-0.5">
+                            <div className="text-neutral-800">{reg.email}</div>
+                            <div className="text-neutral-500 text-[10px]">{reg.phone}</div>
+                          </td>
+
+                          {/* Seats */}
+                          <td className="py-4 px-4 text-center font-bold text-[#1c1a17]">
+                            {reg.participantCount}
+                          </td>
+
+                          {/* Amount */}
+                          <td className="py-4 px-4 font-serif font-bold text-[#1c1a17]">
+                            ₹{reg.paidAmount.toLocaleString("en-IN")}
+                            <span className="block text-[9px] font-mono text-neutral-400">{reg.paymentMethod}</span>
+                          </td>
+
+                          {/* Payment Status */}
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              reg.paymentStatus === "SUCCESSFUL"
+                                ? "bg-green-100 text-green-800 border border-green-300"
+                                : "bg-amber-100 text-amber-800 border border-amber-300"
+                            }`}>
+                              {reg.paymentStatus}
+                            </span>
+                          </td>
+
+                          {/* Studio Check-In Toggle */}
+                          <td className="py-4 px-4 text-center">
+                            <button
+                              onClick={() => handleToggleCheckIn(reg.tokenNumber)}
+                              className={`px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${
+                                reg.checkedIn
+                                  ? "bg-emerald-700 text-white shadow-xs"
+                                  : "bg-[#E2DDD3] text-neutral-600 hover:bg-[#d8d3c5]"
+                              }`}
+                            >
+                              {reg.checkedIn ? "✓ Checked In" : "Pending"}
+                            </button>
+                          </td>
+
+                          {/* Action Buttons */}
+                          <td className="py-4 px-4 text-right space-x-2">
+                            <button
+                              onClick={() => setSelectedRegDetail(reg)}
+                              className="p-1.5 bg-[#1c1a17] text-white rounded hover:bg-black transition-colors cursor-pointer"
+                              title="View Registration Pass Details"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteRegTarget(reg)}
+                              className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors cursor-pointer"
+                              title="Cancel Registration"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         ) : (
           /* PORTFOLIO MANAGEMENT VIEW */
@@ -1975,6 +2427,356 @@ export default function AdminPage() {
                 >
                   <Trash2 size={14} />
                   Delete Artwork
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EDIT WORKSHOP SETTINGS MODAL */}
+      <AnimatePresence>
+        {isEditWorkshopModalOpen && (
+          <div
+            onClick={() => setIsEditWorkshopModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-[#E2DDD3] border-b border-[#d8d3c5]">
+                <h2 className="text-base font-serif uppercase tracking-widest font-semibold text-[#1c1a17]">
+                  Edit Masterclass Settings
+                </h2>
+                <button
+                  onClick={() => setIsEditWorkshopModalOpen(false)}
+                  className="p-1 text-neutral-500 hover:text-black transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveWorkshopDetails} className="p-6 space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Masterclass Title</label>
+                  <input
+                    type="text"
+                    value={workshopData.title}
+                    onChange={(e) => setWorkshopData({ ...workshopData, title: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Registration Fee (₹)</label>
+                    <input
+                      type="number"
+                      value={workshopData.fee}
+                      onChange={(e) => setWorkshopData({ ...workshopData, fee: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Available Seats</label>
+                    <input
+                      type="number"
+                      value={workshopData.availableSeats}
+                      onChange={(e) => setWorkshopData({ ...workshopData, availableSeats: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Dates</label>
+                  <input
+                    type="text"
+                    value={workshopData.date}
+                    onChange={(e) => setWorkshopData({ ...workshopData, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Venue Address</label>
+                  <input
+                    type="text"
+                    value={workshopData.venue}
+                    onChange={(e) => setWorkshopData({ ...workshopData, venue: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-[#d8d3c5]">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditWorkshopModalOpen(false)}
+                    className="px-4 py-2 border border-neutral-300 rounded text-neutral-700 uppercase tracking-widest text-[10px] font-semibold hover:bg-neutral-200 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#A97C5B] text-white rounded uppercase tracking-widest text-[10px] font-semibold hover:bg-[#966b4c] cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADD MANUAL REGISTRATION MODAL */}
+      <AnimatePresence>
+        {isAddRegModalOpen && (
+          <div
+            onClick={() => setIsAddRegModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-[#E2DDD3] border-b border-[#d8d3c5]">
+                <h2 className="text-base font-serif uppercase tracking-widest font-semibold text-[#1c1a17]">
+                  Add Manual Offline Registration
+                </h2>
+                <button
+                  onClick={() => setIsAddRegModalOpen(false)}
+                  className="p-1 text-neutral-500 hover:text-black transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddManualRegistration} className="p-6 space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ramesh Kumar"
+                    value={manualRegForm.fullName}
+                    onChange={(e) => setManualRegForm({ ...manualRegForm, fullName: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Email *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="ramesh@example.com"
+                      value={manualRegForm.email}
+                      onChange={(e) => setManualRegForm({ ...manualRegForm, email: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Phone *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+91 98765 43210"
+                      value={manualRegForm.phone}
+                      onChange={(e) => setManualRegForm({ ...manualRegForm, phone: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Number of Seats</label>
+                    <select
+                      value={manualRegForm.participantCount}
+                      onChange={(e) => setManualRegForm({ ...manualRegForm, participantCount: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    >
+                      <option value={1}>1 Seat (₹{workshopData.fee})</option>
+                      <option value={2}>2 Seats (₹{workshopData.fee * 2})</option>
+                      <option value={3}>3 Seats (₹{workshopData.fee * 3})</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Payment Status</label>
+                    <select
+                      value={manualRegForm.paymentStatus}
+                      onChange={(e) => setManualRegForm({ ...manualRegForm, paymentStatus: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                    >
+                      <option value="SUCCESSFUL">SUCCESSFUL</option>
+                      <option value="PENDING">PENDING</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-600 mb-1">Camera Gear / Notes</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Canon R6 with 85mm"
+                    value={manualRegForm.cameraGear}
+                    onChange={(e) => setManualRegForm({ ...manualRegForm, cameraGear: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#d8d3c5] rounded focus:outline-none focus:border-[#A97C5B]"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-[#d8d3c5]">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddRegModalOpen(false)}
+                    className="px-4 py-2 border border-neutral-300 rounded text-neutral-700 uppercase tracking-widest text-[10px] font-semibold hover:bg-neutral-200 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#A97C5B] text-white rounded uppercase tracking-widest text-[10px] font-semibold hover:bg-[#966b4c] cursor-pointer"
+                  >
+                    Add Registration
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* REGISTRATION DETAIL VIEW MODAL */}
+      <AnimatePresence>
+        {selectedRegDetail && (
+          <div
+            onClick={() => setSelectedRegDetail(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#faf8f5] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="bg-[#1c1a17] text-[#f5f2eb] px-6 py-4 flex items-center justify-between border-b border-[#A97C5B]">
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-[#A97C5B] tracking-widest block">Attendee Registration Pass</span>
+                  <h3 className="text-base font-mono font-bold">{selectedRegDetail.tokenNumber}</h3>
+                </div>
+                <button onClick={() => setSelectedRegDetail(null)} className="text-neutral-400 hover:text-white cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 text-xs text-neutral-700">
+                <div className="bg-[#E2DDD3]/50 p-4 rounded border border-[#d8d3c5] space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Participant Name:</span>
+                    <span className="font-bold text-[#1c1a17]">{selectedRegDetail.fullName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Email:</span>
+                    <span className="font-mono text-neutral-800">{selectedRegDetail.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Phone:</span>
+                    <span className="font-mono text-neutral-800">{selectedRegDetail.phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">City / Address:</span>
+                    <span>{selectedRegDetail.cityAddress}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-[#f5f2eb] rounded border border-[#d8d3c5]">
+                    <span className="text-[10px] uppercase text-neutral-500 block">Seats Reserved</span>
+                    <span className="text-base font-bold text-[#1c1a17]">{selectedRegDetail.participantCount} Person(s)</span>
+                  </div>
+                  <div className="p-3 bg-[#f5f2eb] rounded border border-[#d8d3c5]">
+                    <span className="text-[10px] uppercase text-neutral-500 block">Total Fee Paid</span>
+                    <span className="text-base font-bold text-[#A97C5B]">₹{selectedRegDetail.paidAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 bg-[#f5f2eb] p-3 rounded border border-[#d8d3c5]">
+                  <span className="text-[10px] uppercase text-neutral-500 block">Camera &amp; Special Requests</span>
+                  <p className="font-medium text-neutral-800">Gear: {selectedRegDetail.cameraGear || "N/A"}</p>
+                  <p className="text-neutral-600 font-light">Notes: {selectedRegDetail.specialRequests || "None"}</p>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-[#E2DDD3] border-t border-[#d8d3c5] flex justify-end">
+                <button
+                  onClick={() => setSelectedRegDetail(null)}
+                  className="px-5 py-2 bg-[#1c1a17] text-white text-xs uppercase tracking-widest rounded font-medium cursor-pointer"
+                >
+                  Close View
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CANCEL REGISTRATION CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {deleteRegTarget && (
+          <div
+            onClick={() => setDeleteRegTarget(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-red-900/10 border-b border-red-200">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle size={20} />
+                  <h3 className="font-serif font-bold text-sm uppercase tracking-wider">Cancel Registration</h3>
+                </div>
+                <button onClick={() => setDeleteRegTarget(null)} className="text-neutral-400 hover:text-black cursor-pointer">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 text-xs text-neutral-700 space-y-3">
+                <p>
+                  Are you sure you want to cancel the registration for{" "}
+                  <strong className="text-[#1c1a17] font-bold">{deleteRegTarget.fullName}</strong> ({deleteRegTarget.tokenNumber})?
+                </p>
+                <p className="text-[11px] text-neutral-500 font-light">
+                  This will remove the attendee pass and restore {deleteRegTarget.participantCount || 1} seat(s) back to the available inventory pool.
+                </p>
+              </div>
+
+              <div className="px-6 py-4 bg-[#E2DDD3] border-t border-[#d8d3c5] flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteRegTarget(null)}
+                  className="px-4 py-2 border border-neutral-300 rounded text-xs uppercase tracking-widest font-medium cursor-pointer"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  onClick={handleDeleteRegistration}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs uppercase tracking-widest font-semibold cursor-pointer"
+                >
+                  Cancel Registration
                 </button>
               </div>
             </motion.div>
