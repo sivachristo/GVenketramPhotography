@@ -36,6 +36,7 @@ import {
   Mail,
   Phone
 } from "lucide-react";
+import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
 
 export default function AdminPage() {
   const [categories, setCategories] = useState([]);
@@ -57,19 +58,6 @@ export default function AdminPage() {
 
   // Add Image Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [uploadMode, setUploadMode] = useState("file"); // 'url' or 'file'
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [uploadStatusText, setUploadStatusText] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [newImage, setNewImage] = useState({
-    title: "",
-    src: "",
-    category: "Advertising",
-    width: 1600,
-    height: 1200,
-    description: "",
-  });
 
   const [modifiedFieldsMap, setModifiedFieldsMap] = useState({});
 
@@ -733,206 +721,39 @@ export default function AdminPage() {
     }
   };
 
-  // Submit Add Image Form (supports Bulk Multi-File Upload or URL)
-  const handleAddImageSubmit = async (e) => {
-    e.preventDefault();
-    setIsUploading(true);
-
-    const targetCategory = newImage.category || categories[0] || "Advertising";
-
-    // 1. BULK FILE UPLOAD MODE
-    if (uploadMode === "file" && selectedFiles.length > 0) {
-      const formData = new FormData();
-      selectedFiles.forEach((file) => {
-        formData.append("files", file);
-      });
-
-      try {
-        setUploadStatusText(`Uploading ${selectedFiles.length} image(s) to storage...`);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json();
-          throw new Error(errData.error || "File upload failed");
-        }
-
-        const uploadData = await uploadRes.json();
-        const uploadedFiles = uploadData.files || [];
-
-        if (uploadedFiles.length === 0) {
-          throw new Error("No files were successfully uploaded");
-        }
-
-        setUploadStatusText(`Saving ${uploadedFiles.length} image(s) to database...`);
-
-        const imagesToCreate = uploadedFiles.map((uf, idx) => ({
-          src: uf.src,
-          title: selectedFiles.length === 1 && newImage.title ? newImage.title : (uf.title || `Artwork ${idx + 1}`),
-          category: targetCategory,
-          width: uf.width || 1600,
-          height: uf.height || 1200,
-          description: newImage.description || `Editorial photography for ${targetCategory} by G Venket Ram.`,
+  // Callback when images are successfully created via AddPortfolioImageModal
+  const handlePortfolioImagesAdded = (createdItems, targetCategory) => {
+    let foundCategory = false;
+    const updatedData = portfolioData.map((cat) => {
+      if (cat.category.toLowerCase() === targetCategory.toLowerCase()) {
+        foundCategory = true;
+        const combined = [...createdItems, ...cat.images];
+        const resequenced = combined.map((img, i) => ({
+          ...img,
+          display_order: i + 1,
+          position_num: i + 1,
         }));
-
-        const portfolioRes = await fetch("/api/portfolio", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "bulk_create",
-            category: targetCategory,
-            images: imagesToCreate,
-          }),
-        });
-
-        if (!portfolioRes.ok) {
-          const errData = await portfolioRes.json();
-          throw new Error(errData.error || "Failed to save portfolio items");
-        }
-
-        const portfolioDataRes = await portfolioRes.json();
-        const rawCreated = portfolioDataRes.data || [];
-        const createdItems = rawCreated.map((item, idx) => ({
-          id: item.id || `temp-${Date.now()}-${idx}`,
-          src: item.src,
-          width: item.width || 1600,
-          height: item.height || 1200,
-          title: item.title || "Untitled",
-          description: item.description || "",
-          category: item.category_name || item.category || targetCategory,
-          display_order: item.display_order ?? idx + 1,
-          position_num: item.display_order ?? idx + 1,
-        }));
-
-        // Prepend created images to local UI state for target category
-        let foundCategory = false;
-        const updatedData = portfolioData.map((cat) => {
-          if (cat.category.toLowerCase() === targetCategory.toLowerCase()) {
-            foundCategory = true;
-            return {
-              ...cat,
-              images: [...createdItems, ...cat.images],
-            };
-          }
-          return cat;
-        });
-
-        if (!foundCategory) {
-          updatedData.push({
-            category: targetCategory,
-            images: createdItems,
-          });
-        }
-
-        setPortfolioData(updatedData);
-        setIsAddModalOpen(false);
-        setIsUploading(false);
-        setSelectedFiles([]);
-        setUploadStatusText("");
-        showToast(`Successfully added ${createdItems.length} image(s) to "${targetCategory}"!`);
-
-        // Reset form
-        setNewImage({
-          title: "",
-          src: "",
-          category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
-          width: 1600,
-          height: 1200,
-          description: "",
-        });
-        return;
-      } catch (err) {
-        console.error("Bulk upload error:", err);
-        showToast(err.message || "Failed to process bulk upload", "error");
-        setIsUploading(false);
-        setUploadStatusText("");
-        return;
+        return {
+          ...cat,
+          images: resequenced,
+        };
       }
+      return cat;
+    });
+
+    if (!foundCategory) {
+      updatedData.push({
+        category: targetCategory,
+        images: createdItems,
+      });
     }
 
-    // 2. SINGLE URL UPLOAD MODE
-    let finalSrc = newImage.src;
-    if (!finalSrc && uploadMode === "url") {
-      showToast("Please provide an image URL", "error");
-      setIsUploading(false);
-      return;
-    }
-
-    const newImageObj = {
-      src: finalSrc,
-      width: parseInt(newImage.width) || 1600,
-      height: parseInt(newImage.height) || 1200,
-      title: newImage.title || "Untitled Artwork",
-      description: newImage.description || `Editorial photography for ${targetCategory} by G Venket Ram.`,
-    };
-
-    try {
-      const patchRes = await fetch("/api/portfolio", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create",
-          image: {
-            ...newImageObj,
-            category: targetCategory,
-          },
-        }),
-      });
-
-      if (!patchRes.ok) {
-        const errData = await patchRes.json();
-        throw new Error(errData.error || "Failed to save image");
-      }
-
-      const patchData = await patchRes.json();
-      const rawSingle = patchData.data || {};
-      const createdImageObj = {
-        ...newImageObj,
-        id: rawSingle.id || newImageObj.id || `temp-${Date.now()}`,
-        category: rawSingle.category_name || rawSingle.category || targetCategory,
-      };
-
-      let foundCategory = false;
-      const updatedData = portfolioData.map((cat) => {
-        if (cat.category.toLowerCase() === targetCategory.toLowerCase()) {
-          foundCategory = true;
-          return {
-            ...cat,
-            images: [createdImageObj, ...cat.images],
-          };
-        }
-        return cat;
-      });
-
-      if (!foundCategory) {
-        updatedData.push({
-          category: targetCategory,
-          images: [createdImageObj],
-        });
-      }
-
-      setPortfolioData(updatedData);
-      setIsAddModalOpen(false);
-      setIsUploading(false);
-      showToast(`Added new image to "${targetCategory}"!`);
-
-      setNewImage({
-        title: "",
-        src: "",
-        category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
-        width: 1600,
-        height: 1200,
-        description: "",
-      });
-      setSelectedFiles([]);
-    } catch (err) {
-      console.error("Add image PATCH error:", err);
-      showToast(err.message || "Failed to save image", "error");
-      setIsUploading(false);
-    }
+    setPortfolioData(updatedData);
+    showToast(
+      createdItems.length > 1
+        ? `Successfully added ${createdItems.length} image(s) to "${targetCategory}"!`
+        : `Added new image to "${targetCategory}"!`
+    );
   };
 
   // Flatten images for workspace listing
@@ -1033,13 +854,7 @@ export default function AdminPage() {
           {mainTab === "portfolio" ? (
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
               <button
-                onClick={() => {
-                  setNewImage((prev) => ({
-                    ...prev,
-                    category: activeCategory !== "All" ? activeCategory : categories[0] || "Advertising",
-                  }));
-                  setIsAddModalOpen(true);
-                }}
+                onClick={() => setIsAddModalOpen(true)}
                 className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
               >
                 <Plus size={15} />
@@ -1838,219 +1653,14 @@ export default function AdminPage() {
       </AnimatePresence>
 
       {/* ADD NEW IMAGE MODAL */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 bg-[#E2DDD3] border-b border-[#d8d3c5]">
-                <h2 className="text-base font-serif uppercase tracking-widest font-semibold text-[#1c1a17]">
-                  Add New Portfolio Image
-                </h2>
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="p-1 text-neutral-500 hover:text-black transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Modal Body Form */}
-              <form onSubmit={handleAddImageSubmit} className="p-6 space-y-4">
-                
-                {/* Upload Mode Switcher */}
-                <div className="flex gap-2 p-1 bg-[#e6e2d8]/60 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setUploadMode("url")}
-                    className={`flex-1 py-1.5 text-xs uppercase tracking-widest rounded font-semibold transition-all ${
-                      uploadMode === "url"
-                        ? "bg-[#1c1a17] text-[#f5f2eb]"
-                        : "text-neutral-600 hover:text-black"
-                    }`}
-                  >
-                    Image URL
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUploadMode("file")}
-                    className={`flex-1 py-1.5 text-xs uppercase tracking-widest rounded font-semibold transition-all ${
-                      uploadMode === "file"
-                        ? "bg-[#1c1a17] text-[#f5f2eb]"
-                        : "text-neutral-600 hover:text-black"
-                    }`}
-                  >
-                    Upload File
-                  </button>
-                </div>
-
-                {/* Image Source Input */}
-                {uploadMode === "url" ? (
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Image Source URL *
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="https://example.com/photo.jpg or /portfolio/fashion/image.webp"
-                      value={newImage.src}
-                      onChange={(e) => setNewImage({ ...newImage, src: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Choose Image File(s) (Select 1 or Multiple) *
-                    </label>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      required={selectedFiles.length === 0}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setSelectedFiles(files);
-                      }}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                    {selectedFiles.length > 0 && (
-                      <div className="mt-2.5 p-3 bg-[#e6e2d8]/50 border border-[#d8d3c5] rounded text-xs space-y-1.5 max-h-40 overflow-y-auto">
-                        <div className="font-semibold text-[#1c1a17] text-[11px] uppercase tracking-wider flex justify-between">
-                          <span>{selectedFiles.length} file(s) selected:</span>
-                          <span>{(selectedFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB</span>
-                        </div>
-                        <ul className="space-y-1 text-neutral-600 font-mono text-[10px] divide-y divide-[#d8d3c5]/50">
-                          {selectedFiles.map((f, i) => (
-                            <li key={i} className="pt-1 flex items-center justify-between gap-2">
-                              <span className="truncate flex-1">#{i + 1}: {f.name}</span>
-                              <span className="text-neutral-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Target Category Tag */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Assign Category Tab Tag *
-                  </label>
-                  <select
-                    value={newImage.category}
-                    onChange={(e) => setNewImage({ ...newImage, category: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17] font-semibold"
-                  >
-                    {categories.map((cName) => (
-                      <option key={cName} value={cName}>
-                        {cName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Title */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Title {uploadMode === "file" && selectedFiles.length > 1 ? "(Optional for bulk upload)" : "*"}
-                  </label>
-                  <input
-                    type="text"
-                    required={uploadMode === "url" || selectedFiles.length <= 1}
-                    placeholder={uploadMode === "file" && selectedFiles.length > 1 ? "Auto-formatted from filenames if left blank" : "e.g. Royal Sari Collection"}
-                    value={newImage.title}
-                    onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Short description of the photo..."
-                    value={newImage.description}
-                    onChange={(e) => setNewImage({ ...newImage, description: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Dimensions */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Width (px)
-                    </label>
-                    <input
-                      type="number"
-                      value={newImage.width}
-                      onChange={(e) => setNewImage({ ...newImage, width: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Height (px)
-                    </label>
-                    <input
-                      type="number"
-                      value={newImage.height}
-                      onChange={(e) => setNewImage({ ...newImage, height: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  </div>
-                </div>
-
-                {/* Upload Status / Progress Message */}
-                {uploadStatusText && (
-                  <div className="p-2.5 bg-amber-500/10 border border-amber-300 rounded text-xs text-amber-900 flex items-center gap-2 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
-                    <span className="font-medium">{uploadStatusText}</span>
-                  </div>
-                )}
-
-                {/* Form Buttons */}
-                <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#e6e2d8]">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(false)}
-                    disabled={isUploading}
-                    className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isUploading}
-                    className="px-5 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded font-medium transition-colors cursor-pointer flex items-center gap-2"
-                  >
-                    {isUploading ? (
-                      <>
-                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        <span>Uploading...</span>
-                      </>
-                    ) : (
-                      <span>{uploadMode === "file" && selectedFiles.length > 1 ? `Add ${selectedFiles.length} Images` : "Add to Portfolio"}</span>
-                    )}
-                  </button>
-                </div>
-
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <AddPortfolioImageModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        categories={categories}
+        defaultCategory={activeCategory !== "All" ? activeCategory : categories[0] || "Advertising"}
+        onSuccess={handlePortfolioImagesAdded}
+        showToast={showToast}
+      />
 
       {/* DELETE CONFIRMATION MODAL */}
       <AnimatePresence>

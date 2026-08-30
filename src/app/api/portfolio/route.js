@@ -59,6 +59,29 @@ export async function GET() {
   });
 }
 
+async function shiftDisplayOrders(categoryName, shiftAmount) {
+  const { data: images, error: fetchError } = await supabase
+    .from("portfolio_images")
+    .select("id, display_order")
+    .eq("category_name", categoryName)
+    .order("display_order", { ascending: true });
+
+  if (fetchError) throw fetchError;
+  if (!images || images.length === 0) return;
+
+  const updatePromises = images.map((img) => {
+    const currentOrder = img.display_order || 1;
+    return supabase
+      .from("portfolio_images")
+      .update({ display_order: currentOrder + shiftAmount })
+      .eq("id", img.id);
+  });
+
+  const results = await Promise.all(updatePromises);
+  const failed = results.find((r) => r.error);
+  if (failed) throw failed.error;
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -80,13 +103,8 @@ export async function POST(request) {
     let orderNum = display_order !== undefined ? display_order : position_num;
 
     if (orderNum === undefined || orderNum === null) {
-      const { data: maxRow } = await supabase
-        .from("portfolio_images")
-        .select("display_order")
-        .eq("category_name", targetCat)
-        .order("display_order", { ascending: false })
-        .limit(1);
-      orderNum = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+      await shiftDisplayOrders(targetCat, 1);
+      orderNum = 1;
     }
 
     const newRecord = {
@@ -177,13 +195,8 @@ export async function PATCH(request) {
         let orderNum = img.display_order !== undefined ? img.display_order : img.position_num;
 
         if (orderNum === undefined || orderNum === null) {
-          const { data: maxRow } = await supabase
-            .from("portfolio_images")
-            .select("display_order")
-            .eq("category_name", targetCat)
-            .order("display_order", { ascending: false })
-            .limit(1);
-          orderNum = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+          await shiftDisplayOrders(targetCat, 1);
+          orderNum = 1;
         }
 
         const newRecord = {
@@ -224,15 +237,8 @@ export async function PATCH(request) {
 
         const targetCat = body.category || imageList[0]?.category || imageList[0]?.category_name || "Advertising";
 
-        // Query max display_order for category
-        const { data: maxRow } = await supabase
-          .from("portfolio_images")
-          .select("display_order")
-          .eq("category_name", targetCat)
-          .order("display_order", { ascending: false })
-          .limit(1);
-
-        let startOrder = maxRow && maxRow.length > 0 ? (maxRow[0].display_order || 0) + 1 : 1;
+        // Shift existing images by imageList.length
+        await shiftDisplayOrders(targetCat, imageList.length);
 
         const recordsToInsert = imageList.map((img, idx) => ({
           ...(img.id ? { id: img.id } : {}),
@@ -242,7 +248,7 @@ export async function PATCH(request) {
           height: img.height || 1200,
           title: img.title || "Untitled",
           description: img.description || `Editorial photography for ${targetCat} by G Venket Ram.`,
-          display_order: startOrder + idx,
+          display_order: idx + 1,
         }));
 
         const { data: insertedData, error: insertErr } = await supabase
