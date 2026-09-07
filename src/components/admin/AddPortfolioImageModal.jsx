@@ -2,7 +2,57 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, Coffee } from "lucide-react";
+
+const uploadWithProgress = (url, formData, signal, onProgress) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+
+    if (signal) {
+      if (signal.aborted) {
+        return reject(new DOMException("Aborted", "AbortError"));
+      }
+      signal.addEventListener("abort", () => {
+        xhr.abort();
+        reject(new DOMException("Aborted", "AbortError"));
+      });
+    }
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 90);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText);
+          onProgress(95);
+          resolve(json);
+        } catch (err) {
+          reject(new Error("Invalid server response"));
+        }
+      } else {
+        try {
+          const json = JSON.parse(xhr.responseText);
+          reject(new Error(json.error || `Upload failed with status ${xhr.status}`));
+        } catch {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+
+    xhr.send(formData);
+  });
+};
 
 export default function AddPortfolioImageModal({
   isOpen,
@@ -13,10 +63,12 @@ export default function AddPortfolioImageModal({
   showToast,
 }) {
   const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const [uploadMode, setUploadMode] = useState("file"); // 'url' or 'file'
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadStatusText, setUploadStatusText] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -38,11 +90,16 @@ export default function AddPortfolioImageModal({
     }
   }, [isOpen, defaultCategory, categories]);
 
-  // Reset form when modal closes
+  // Reset form when modal closes or cancel is clicked
   const handleClose = () => {
-    if (isUploading) return;
-    setSelectedFiles([]);
+    if (isUploading && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      if (showToast) showToast("Upload cancelled", "info");
+    }
+    setIsUploading(false);
     setUploadStatusText("");
+    setUploadProgress(0);
+    setSelectedFiles([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
     onClose();
   };
@@ -92,6 +149,10 @@ export default function AddPortfolioImageModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsUploading(true);
+    setUploadProgress(0);
+
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
     const targetCategory = formData.category || categories[0] || "Advertising";
 
@@ -103,25 +164,24 @@ export default function AddPortfolioImageModal({
       });
 
       try {
-        setUploadStatusText(`Uploading ${selectedFiles.length} image(s) to storage...`);
+        setUploadStatusText(`Uploading ${selectedFiles.length} image(s)...`);
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadFormData,
+        const uploadData = await uploadWithProgress("/api/upload", uploadFormData, signal, (percent) => {
+          setUploadProgress(percent);
+          if (percent >= 90) {
+            setUploadStatusText(`Optimizing images on server...`);
+          } else {
+            setUploadStatusText(`Uploading ${selectedFiles.length} image(s) (${percent}%)...`);
+          }
         });
 
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json();
-          throw new Error(errData.error || "File upload failed");
-        }
-
-        const uploadData = await uploadRes.json();
         const uploadedFiles = uploadData.files || [];
 
         if (uploadedFiles.length === 0) {
           throw new Error("No files were successfully uploaded");
         }
 
+        setUploadProgress(95);
         setUploadStatusText(`Saving ${uploadedFiles.length} image(s) to database...`);
 
         const imagesToCreate = uploadedFiles.map((uf, idx) => ({
@@ -146,6 +206,7 @@ export default function AddPortfolioImageModal({
             category: targetCategory,
             images: imagesToCreate,
           }),
+          signal,
         });
 
         if (!portfolioRes.ok) {
@@ -153,6 +214,7 @@ export default function AddPortfolioImageModal({
           throw new Error(errData.error || "Failed to save portfolio items");
         }
 
+        setUploadProgress(100);
         const portfolioDataRes = await portfolioRes.json();
         const rawCreated = portfolioDataRes.data || [];
         const createdItems = rawCreated.map((item, idx) => ({
@@ -169,6 +231,7 @@ export default function AddPortfolioImageModal({
 
         setIsUploading(false);
         setUploadStatusText("");
+        setUploadProgress(0);
         setSelectedFiles([]);
         setFormData({
           title: "",
@@ -185,10 +248,18 @@ export default function AddPortfolioImageModal({
         onClose();
         return;
       } catch (err) {
+        if (err.name === "AbortError" || signal.aborted) {
+          console.log("Upload cancelled by user");
+          setIsUploading(false);
+          setUploadStatusText("");
+          setUploadProgress(0);
+          return;
+        }
         console.error("Bulk upload error:", err);
         if (showToast) showToast(err.message || "Failed to process bulk upload", "error");
         setIsUploading(false);
         setUploadStatusText("");
+        setUploadProgress(0);
         return;
       }
     }
@@ -222,6 +293,7 @@ export default function AddPortfolioImageModal({
             category: targetCategory,
           },
         }),
+        signal,
       });
 
       if (!patchRes.ok) {
@@ -253,16 +325,22 @@ export default function AddPortfolioImageModal({
       }
       onClose();
     } catch (err) {
+      if (err.name === "AbortError" || signal.aborted) {
+        console.log("Upload cancelled by user");
+        setIsUploading(false);
+        setUploadStatusText("");
+        return;
+      }
       console.error("Add image PATCH error:", err);
       if (showToast) showToast(err.message || "Failed to save image", "error");
       setIsUploading(false);
     }
   };
 
-  const totalSizeMB = (
-    selectedFiles.reduce((acc, f) => acc + f.size, 0) /
-    (1024 * 1024)
-  ).toFixed(2);
+  const totalSizeBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+  const totalSizeMBNum = totalSizeBytes / (1024 * 1024);
+  const totalSizeMB = totalSizeMBNum.toFixed(2);
+  const isLargeUpload = totalSizeMBNum >= 500;
 
   return (
     <AnimatePresence>
@@ -282,9 +360,8 @@ export default function AddPortfolioImageModal({
               <button
                 type="button"
                 onClick={handleClose}
-                disabled={isUploading}
-                className="p-1 text-neutral-500 hover:text-black transition-colors rounded hover:bg-black/5 disabled:opacity-50"
-                title="Close dialog"
+                className="p-1 text-neutral-500 hover:text-black transition-colors rounded hover:bg-black/5 cursor-pointer"
+                title={isUploading ? "Cancel upload and close" : "Close dialog"}
               >
                 <X size={20} />
               </button>
@@ -404,6 +481,28 @@ export default function AddPortfolioImageModal({
                       </ul>
                     </div>
                   )}
+
+                  {/* Chill Coffee Warning Alert when selected files exceed 500 MB */}
+                  {isLargeUpload && uploadMode === "file" && (
+                    <div className="mt-2.5 p-3 bg-amber-500/10 border border-amber-300/80 rounded-lg text-amber-950 text-xs flex items-start gap-3 shadow-xs">
+                      <div className="p-2 bg-amber-100/90 rounded-full text-amber-800 shrink-0 mt-0.5 shadow-xs">
+                        <Coffee size={18} />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[11px] uppercase tracking-wider text-amber-900">
+                            Heavy Upload ({totalSizeMB} MB)
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 text-amber-950 rounded-full font-semibold font-mono">
+                            ☕ Coffee Time
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-900/90 leading-relaxed font-light">
+                          Looks like a pretty heavy batch! Take a moment and have a sip of coffee ☕ in between — high-resolution processing may take a little time.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -518,11 +617,33 @@ export default function AddPortfolioImageModal({
                 </div>
               </div>
 
-              {/* Upload Status / Progress Message */}
-              {uploadStatusText && (
-                <div className="p-2.5 bg-amber-500/10 border border-amber-300 rounded text-xs text-amber-900 flex items-center gap-2 animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
-                  <span className="font-medium">{uploadStatusText}</span>
+              {/* Upload Status & Animated Progress Bar */}
+              {isUploading && (
+                <div className="p-3.5 bg-[#e6e2d8]/70 border border-[#d8d3c5] rounded-lg text-xs space-y-2.5 shadow-xs">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#1c1a17]">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-ping shrink-0"></span>
+                      <span className="truncate">{uploadStatusText || "Uploading files..."}</span>
+                    </div>
+                    <span className="font-mono text-amber-900 font-bold ml-2 shrink-0">{uploadProgress}%</span>
+                  </div>
+
+                  {/* Animated Progress Bar Track */}
+                  <div className="w-full h-2.5 bg-[#d8d3c5] rounded-full overflow-hidden p-0.5 relative shadow-inner">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-amber-600 via-[#1c1a17] to-amber-700 rounded-full shadow-xs"
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${uploadProgress}%` }}
+                      transition={{ ease: "easeOut", duration: 0.3 }}
+                    />
+                  </div>
+
+                  {isLargeUpload && (
+                    <p className="text-[11px] text-amber-800/90 italic flex items-center gap-1.5 pt-0.5 border-t border-[#d8d3c5]/50">
+                      <Coffee size={13} className="shrink-0 text-amber-700" />
+                      <span>Sipping coffee... processing high-res images on server</span>
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -531,10 +652,9 @@ export default function AddPortfolioImageModal({
                 <button
                   type="button"
                   onClick={handleClose}
-                  disabled={isUploading}
-                  className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium transition-colors cursor-pointer hover:bg-red-50 hover:text-red-700 rounded"
                 >
-                  Cancel
+                  {isUploading ? "Cancel Upload" : "Cancel"}
                 </button>
                 <button
                   type="submit"
