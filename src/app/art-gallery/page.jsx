@@ -4,13 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import ArtworkCard from "@/components/ArtworkCard";
-import { artworksData as initialData, ARTWORK_CATEGORIES, ARTWORK_TYPES } from "@/data/artworks";
+import { artworksData as initialData, ARTWORK_CATEGORIES } from "@/data/artworks";
 import { fadeIn } from "@/utils/animations";
 
 export default function ArtGalleryPage() {
   const [artworks, setArtworks] = useState(initialData);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [activeType, setActiveType] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
 
@@ -35,16 +34,13 @@ export default function ArtGalleryPage() {
     return artworks
       .filter((art) => {
         const matchesCategory =
-          activeCategory === "All" ||
-          art.category === activeCategory ||
-          (activeCategory === "Art" && art.category.includes("Art"));
-        const matchesType = activeType === "All" || art.type === activeType;
+          activeCategory === "All" || art.category === activeCategory;
         const matchesSearch =
           searchQuery.trim() === "" ||
           art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           art.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        return matchesCategory && matchesType && matchesSearch;
+        return matchesCategory && matchesSearch;
       })
       .sort((a, b) => {
         if (sortBy === "price-asc") return a.price - b.price;
@@ -52,7 +48,7 @@ export default function ArtGalleryPage() {
         if (sortBy === "title") return a.title.localeCompare(b.title);
         return 0; // featured default order
       });
-  }, [artworks, activeCategory, activeType, searchQuery, sortBy]);
+  }, [artworks, activeCategory, searchQuery, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#f5f2eb] px-4 sm:px-8 lg:px-12 py-16 text-[#1c1a17]">
@@ -78,9 +74,9 @@ export default function ArtGalleryPage() {
         </motion.div>
 
         {/* Filter & Search Toolbar */}
-        <div className="mb-12 space-y-6">
+        <div className="mb-12">
           
-          {/* Top Bar: Search Input & Sort Dropdown */}
+          {/* Search Input & Sort Dropdown */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
             
             {/* Category Tabs */}
@@ -136,33 +132,12 @@ export default function ArtGalleryPage() {
             </div>
           </div>
 
-          {/* Secondary Type Filter Pills: Digital vs Physical */}
-          <div className="flex items-center justify-center gap-3 text-xs">
-            <span className="uppercase tracking-widest text-neutral-400 text-[10px] font-semibold">Format:</span>
-            {ARTWORK_TYPES.map((type) => {
-              const isActive = activeType === type;
-              return (
-                <button
-                  key={type}
-                  onClick={() => setActiveType(type)}
-                  className={`px-3 py-1 text-[11px] uppercase tracking-wider transition-colors duration-300 cursor-pointer ${
-                    isActive
-                      ? "text-[#A97C5B] font-semibold underline underline-offset-4"
-                      : "text-neutral-500 hover:text-black"
-                  }`}
-                >
-                  {type === "All" ? "All Formats" : type}
-                </button>
-              );
-            })}
-          </div>
-
         </div>
 
         {/* Masonry Artwork Grid Layout */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${activeCategory}-${activeType}-${searchQuery}-${sortBy}`}
+            key={`${activeCategory}-${searchQuery}-${sortBy}`}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
@@ -184,7 +159,6 @@ export default function ArtGalleryPage() {
                 <button
                   onClick={() => {
                     setActiveCategory("All");
-                    setActiveType("All");
                     setSearchQuery("");
                   }}
                   className="text-xs uppercase tracking-wider text-[#A97C5B] underline hover:text-[#1c1a17] transition-colors"

@@ -40,6 +40,8 @@ import {
   EyeOff
 } from "lucide-react";
 import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
+import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal";
+import ArtworkModal from "@/components/admin/ArtworkModal";
 import {
   PortfolioCategoryTabsSkeleton,
   PortfolioSkeletonGrid,
@@ -100,8 +102,8 @@ export default function AdminPage() {
   // Full View Image Preview Modal State
   const [previewImage, setPreviewImage] = useState(null);
 
-  // Inline Image Editing State
-  const [editingImageSrc, setEditingImageSrc] = useState(null);
+  // Portfolio Edit Modal State
+  const [portfolioEditModal, setPortfolioEditModal] = useState(null);
 
   // Delete Confirmation Modal State
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
@@ -121,23 +123,6 @@ export default function AdminPage() {
   const [isArtworkModalOpen, setIsArtworkModalOpen] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState(null); // null = Create Mode, object = Edit Mode
   const [artworkDeleteTarget, setArtworkDeleteTarget] = useState(null);
-  const [artworkUploadMode, setArtworkUploadMode] = useState("file"); // 'file' or 'url'
-  const [artworkSelectedFile, setArtworkSelectedFile] = useState(null);
-  const [isSavingArtwork, setIsSavingArtwork] = useState(false);
-  const artworkAbortControllerRef = useRef(null);
-
-  const [artworkForm, setArtworkForm] = useState({
-    title: "",
-    image: "",
-    price: 350,
-    type: "Physical",
-    category: "Physical Prints",
-    availability: "In Stock",
-    quantity: 25,
-    dimensions: "24 x 36 inches",
-    shortDescription: "",
-    description: "",
-  });
 
   // Workshop Management State (Frontend Only)
   const [workshopData, setWorkshopData] = useState({
@@ -296,145 +281,73 @@ export default function AdminPage() {
     }
   };
 
+  const handleOpenPortfolioEditModal = (img) => {
+    setPortfolioEditModal(img);
+  };
+
+  const handlePortfolioEditSuccess = (updatedImage, oldCategory, newCategory) => {
+    setPortfolioData((prev) => {
+      if (oldCategory === newCategory) {
+        return prev.map((cat) =>
+          cat.category === newCategory
+            ? {
+                ...cat,
+                images: cat.images.map((i) =>
+                  (updatedImage.id && i.id === updatedImage.id) || i.src === updatedImage.src
+                    ? updatedImage
+                    : i
+                ),
+              }
+            : cat
+        );
+      } else {
+        const removedFromOld = prev.map((cat) => {
+          if (cat.category === oldCategory) {
+            return {
+              ...cat,
+              images: cat.images.filter((i) =>
+                !((updatedImage.id && i.id === updatedImage.id) || i.src === updatedImage.src)
+              ),
+            };
+          }
+          return cat;
+        });
+
+        let found = false;
+        const addedToNew = removedFromOld.map((cat) => {
+          if (cat.category === newCategory) {
+            found = true;
+            return { ...cat, images: [updatedImage, ...cat.images] };
+          }
+          return cat;
+        });
+
+        if (!found) {
+          addedToNew.push({ category: newCategory, images: [updatedImage] });
+        }
+
+        return addedToNew;
+      }
+    });
+  };
+
   const handleOpenCreateArtworkModal = () => {
     setEditingArtwork(null);
-    setArtworkForm({
-      title: "",
-      image: "",
-      price: 350,
-      type: "Physical",
-      category: "Physical Prints",
-      availability: "In Stock",
-      quantity: 25,
-      dimensions: "24 x 36 inches",
-      shortDescription: "",
-      description: "",
-    });
-    setArtworkSelectedFile(null);
     setIsArtworkModalOpen(true);
   };
 
   const handleOpenEditArtworkModal = (art) => {
     setEditingArtwork(art);
-    setArtworkForm({
-      title: art.title || "",
-      image: art.image || "",
-      price: art.price || 350,
-      type: art.type || "Physical",
-      category: art.category || "Physical Prints",
-      availability: art.availability || "In Stock",
-      quantity: art.quantity || 25,
-      dimensions: art.dimensions || "24 x 36 inches",
-      shortDescription: art.shortDescription || "",
-      description: art.description || "",
-    });
-    setArtworkSelectedFile(null);
     setIsArtworkModalOpen(true);
   };
 
-  const handleCloseArtworkModal = () => {
-    if (isSavingArtwork && artworkAbortControllerRef.current) {
-      artworkAbortControllerRef.current.abort();
-      showToast("Artwork upload cancelled", "info");
-    }
-    setIsSavingArtwork(false);
-    setIsArtworkModalOpen(false);
-  };
-
-  const handleArtworkSubmit = async (e) => {
-    e.preventDefault();
-    setIsSavingArtwork(true);
-
-    artworkAbortControllerRef.current = new AbortController();
-    const signal = artworkAbortControllerRef.current.signal;
-
-    try {
-      let imageUrl = artworkForm.image;
-
-      if (artworkUploadMode === "file" && artworkSelectedFile) {
-        const formData = new FormData();
-        formData.append("files", artworkSelectedFile);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-          signal,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload artwork image file");
-        }
-
-        const uploadData = await uploadRes.json();
-        if (uploadData.files && uploadData.files.length > 0) {
-          imageUrl = uploadData.files[0].src;
-        }
-      }
-
-      if (!imageUrl && !artworkForm.image) {
-        showToast("Please provide an image file or URL", "error");
-        setIsSavingArtwork(false);
-        return;
-      }
-
-      const payload = {
-        ...artworkForm,
-        image: imageUrl || artworkForm.image,
-        price: Number(artworkForm.price) || 350,
-      };
-
-      if (editingArtwork) {
-        // Edit mode (PATCH)
-        const res = await fetch("/api/artworks", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingArtwork.id,
-            ...payload,
-          }),
-          signal,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setArtworksList((prev) =>
-            prev.map((item) => (item.id === editingArtwork.id ? (data.artwork || { ...item, ...payload }) : item))
-          );
-          showToast(`Updated artwork "${artworkForm.title}"!`);
-          setIsArtworkModalOpen(false);
-        } else {
-          showToast("Failed to update artwork", "error");
-        }
-      } else {
-        // Create mode (POST)
-        const res = await fetch("/api/artworks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.artwork) {
-            setArtworksList((prev) => [data.artwork, ...prev]);
-          }
-          showToast(`Created artwork "${artworkForm.title}"!`);
-          setIsArtworkModalOpen(false);
-        } else {
-          showToast("Failed to create artwork", "error");
-        }
-      }
-    } catch (err) {
-      if (err.name === "AbortError" || signal.aborted) {
-        console.log("Artwork submit cancelled by user");
-        setIsSavingArtwork(false);
-        return;
-      }
-      console.error("Artwork submit error:", err);
-      showToast(err.message || "Failed to save artwork", "error");
-    } finally {
-      setIsSavingArtwork(false);
+  const handleArtworkSuccess = (artwork, isEdit) => {
+    if (isEdit) {
+      setArtworksList((prev) =>
+        prev.map((item) => (item.id === artwork.id ? artwork : item))
+      );
+    } else {
+      setArtworksList((prev) => [artwork, ...prev]);
     }
   };
 
@@ -978,15 +891,7 @@ export default function AdminPage() {
       <header className="sticky top-0 z-40 bg-[#E2DDD3] border-b border-[#d8d3c5] shadow-xs px-4 sm:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
 
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="inline-flex items-center text-xs uppercase tracking-widest text-neutral-500 hover:text-black transition-colors"
-            >
-              <ArrowLeft size={16} className="mr-2" />
-              Main Site
-            </Link>
-            <span className="text-neutral-300">|</span>
+          <div className="flex items-center gap-2">
             <h1 className="text-lg font-serif uppercase tracking-widest text-[#1c1a17] font-semibold flex items-center gap-2">
               <Layers size={18} /> Admin Dashboard
             </h1>
@@ -1074,18 +979,6 @@ export default function AdminPage() {
               </button>
             </div>
           )}
-
-          {/* Logout */}
-          <div className="flex w-full sm:w-auto justify-end">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500 hover:text-red-700 transition-colors cursor-pointer font-semibold"
-              title="Sign out"
-            >
-              <LogOut size={14} />
-              Sign Out
-            </button>
-          </div>
 
         </div>
       </header>
@@ -1542,8 +1435,6 @@ export default function AdminPage() {
                     : catObj ? inCatIndex >= catObj.images.length - 1 : true;
                   const displayPos = isAllView ? idx + 1 : inCatIndex + 1;
 
-                  const isEditing = editingImageSrc === img.src;
-
                   return (
                     <div
                       key={img.id || `${img.category}-${img.src}-${idx}`}
@@ -1576,19 +1467,16 @@ export default function AdminPage() {
 
                         {/* Top Action Overlay Buttons */}
                         <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                          {/* Inline Edit Toggle Button */}
+                          {/* Edit Button → opens popup dialog */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingImageSrc(isEditing ? null : img.src);
+                              handleOpenPortfolioEditModal(img);
                             }}
-                            className={`p-2 rounded transition-colors shadow-sm cursor-pointer ${isEditing
-                                ? "bg-amber-600 text-white hover:bg-amber-700"
-                                : "bg-[#1c1a17]/90 text-white hover:bg-black"
-                              }`}
-                            title={isEditing ? "Close Editing" : "Edit Title & Description"}
+                            className="p-2 rounded transition-colors shadow-sm cursor-pointer bg-[#1c1a17]/90 text-white hover:bg-black"
+                            title="Edit Image"
                           >
-                            {isEditing ? <Check size={14} /> : <Pencil size={14} />}
+                            <Pencil size={14} />
                           </button>
 
                           {/* Quick Delete Button */}
@@ -1608,61 +1496,27 @@ export default function AdminPage() {
                       {/* Image Metadata & Controls Card Body */}
                       <div className="p-4 flex-1 flex flex-col justify-between gap-4">
 
-                        {isEditing ? (
-                          /* INLINE EDITING FORM */
-                          <div className="flex flex-col gap-2 bg-[#f5f2eb] p-2.5 rounded border border-[#d8d3c5]">
-                            <div>
-                              <label className="block text-[9px] uppercase tracking-widest text-neutral-400 font-semibold mb-1">
-                                Edit Title:
-                              </label>
-                              <input
-                                type="text"
-                                value={img.title || ""}
-                                onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "title", e.target.value, img.id)}
-                                className="w-full text-xs font-serif font-semibold uppercase tracking-wider text-[#1c1a17] bg-white border border-[#e6e2d8] rounded px-2 py-1 focus:outline-none focus:border-[#1c1a17]"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] uppercase tracking-widest text-neutral-400 font-semibold mb-1">
-                                Edit Description:
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={img.description || ""}
-                                onChange={(e) => handleUpdateImageMetadata(img.category, img.src, "description", e.target.value, img.id)}
-                                className="w-full text-[11px] text-neutral-700 bg-white border border-[#e6e2d8] rounded px-2 py-1 focus:outline-none focus:border-[#1c1a17]"
-                              />
-                            </div>
-                            <button
-                              onClick={() => setEditingImageSrc(null)}
-                              className="mt-1 self-end px-3 py-1 bg-[#1c1a17] text-[#f5f2eb] text-[10px] uppercase tracking-widest rounded font-medium cursor-pointer"
+                        {/* Read-Only Metadata Display with Edit Button */}
+                        <div>
+                          <div className="flex items-center justify-between group/title">
+                            <h3
+                              onClick={() => setPreviewImage(img)}
+                              className="text-sm font-serif font-semibold uppercase tracking-wider text-[#1c1a17] line-clamp-1 cursor-pointer hover:text-neutral-600 transition-colors"
                             >
-                              Done Editing
+                              {img.title || "Untitled Image"}
+                            </h3>
+                            <button
+                              onClick={() => handleOpenPortfolioEditModal(img)}
+                              className="p-1 text-neutral-400 hover:text-black transition-colors cursor-pointer"
+                              title="Edit Image"
+                            >
+                              <Pencil size={12} />
                             </button>
                           </div>
-                        ) : (
-                          /* READ-ONLY METADATA DISPLAY */
-                          <div>
-                            <div className="flex items-center justify-between group/title">
-                              <h3
-                                onClick={() => setPreviewImage(img)}
-                                className="text-sm font-serif font-semibold uppercase tracking-wider text-[#1c1a17] line-clamp-1 cursor-pointer hover:text-neutral-600 transition-colors"
-                              >
-                                {img.title || "Untitled Image"}
-                              </h3>
-                              <button
-                                onClick={() => setEditingImageSrc(img.src)}
-                                className="p-1 text-neutral-400 hover:text-black transition-colors"
-                                title="Edit Title & Description"
-                              >
-                                <Pencil size={12} />
-                              </button>
-                            </div>
-                            <p className="text-[11px] text-neutral-500 mt-1 line-clamp-2 leading-relaxed">
-                              {img.description || "No description provided."}
-                            </p>
-                          </div>
-                        )}
+                          <p className="text-[11px] text-neutral-500 mt-1 line-clamp-2 leading-relaxed">
+                            {img.description || "No description provided."}
+                          </p>
+                        </div>
 
                         {/* Controls Footer */}
                         <div className="border-t border-[#e6e2d8] pt-3 flex flex-col gap-3">
@@ -1931,236 +1785,24 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
 
+      {/* EDIT PORTFOLIO IMAGE MODAL */}
+      <EditPortfolioImageModal
+        isOpen={!!portfolioEditModal}
+        image={portfolioEditModal}
+        categories={categories}
+        onClose={() => setPortfolioEditModal(null)}
+        onSuccess={handlePortfolioEditSuccess}
+        showToast={showToast}
+      />
+
       {/* CREATE / EDIT ARTWORK MODAL */}
-      <AnimatePresence>
-        {isArtworkModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden my-8"
-            >
-              <div className="flex items-center justify-between px-6 py-4 bg-[#E2DDD3] border-b border-[#d8d3c5]">
-                <h2 className="text-base font-serif uppercase tracking-widest font-semibold text-[#1c1a17]">
-                  {editingArtwork ? "Edit Artwork" : "Create New Art Gallery Artwork"}
-                </h2>
-                <button
-                  onClick={handleCloseArtworkModal}
-                  className="p-1 text-neutral-400 hover:text-black transition-colors cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleArtworkSubmit} className="p-6 space-y-5 text-xs">
-                {/* Title */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Artwork Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Serenade in Bronze & Shadow"
-                    value={artworkForm.title}
-                    onChange={(e) => setArtworkForm({ ...artworkForm, title: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Upload Mode Selector */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">
-                      Artwork Image Source *
-                    </label>
-                    <div className="flex border border-[#d8d3c5] rounded overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setArtworkUploadMode("file")}
-                        className={`px-3 py-1 text-[10px] uppercase tracking-wider font-semibold cursor-pointer ${artworkUploadMode === "file" ? "bg-[#1c1a17] text-[#f5f2eb]" : "bg-white text-neutral-600"
-                          }`}
-                      >
-                        Upload File
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setArtworkUploadMode("url")}
-                        className={`px-3 py-1 text-[10px] uppercase tracking-wider font-semibold cursor-pointer ${artworkUploadMode === "url" ? "bg-[#1c1a17] text-[#f5f2eb]" : "bg-white text-neutral-600"
-                          }`}
-                      >
-                        Image URL
-                      </button>
-                    </div>
-                  </div>
-
-                  {artworkUploadMode === "file" ? (
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        required={!editingArtwork && !artworkForm.image}
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setArtworkSelectedFile(e.target.files[0]);
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                      />
-                      {artworkSelectedFile && (
-                        <p className="mt-1 text-[10px] text-neutral-500 font-mono">
-                          Selected file: {artworkSelectedFile.name} ({(artworkSelectedFile.size / 1024).toFixed(0)} KB)
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <input
-                      type="url"
-                      placeholder="https://images.unsplash.com/..."
-                      value={artworkForm.image}
-                      onChange={(e) => setArtworkForm({ ...artworkForm, image: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  )}
-                </div>
-
-                {/* Grid: Type & Category & Price & Availability */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Format Type *
-                    </label>
-                    <select
-                      value={artworkForm.type}
-                      onChange={(e) =>
-                        setArtworkForm({
-                          ...artworkForm,
-                          type: e.target.value,
-                          category: e.target.value === "Digital" ? "Digital Prints" : "Physical Prints",
-                        })
-                      }
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    >
-                      <option value="Physical">Physical Print</option>
-                      <option value="Digital">Digital Master File</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Artwork Category *
-                    </label>
-                    <select
-                      value={artworkForm.category}
-                      onChange={(e) => setArtworkForm({ ...artworkForm, category: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    >
-                      <option value="Art">Art</option>
-                      <option value="Digital Prints">Digital Prints</option>
-                      <option value="Physical Prints">Physical Prints</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Starting Price ($ USD) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      value={artworkForm.price}
-                      onChange={(e) => setArtworkForm({ ...artworkForm, price: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                      Availability Status *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. In Stock, Limited Edition (1/25), Instant Download"
-                      value={artworkForm.availability}
-                      onChange={(e) => setArtworkForm({ ...artworkForm, availability: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                    />
-                  </div>
-                </div>
-
-                {/* Dimensions */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Dimensions / Print Format Specs
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 24 x 36 inches or 8K Ultra-HD Resolution"
-                    value={artworkForm.dimensions}
-                    onChange={(e) => setArtworkForm({ ...artworkForm, dimensions: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Short Description */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Short Description (Excerpt)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Brief 1-2 sentence summary for gallery cards"
-                    value={artworkForm.shortDescription}
-                    onChange={(e) => setArtworkForm({ ...artworkForm, shortDescription: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Full Description */}
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
-                    Full Description / Artist Statement
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Detailed narrative, artistic vision, and story behind the artwork..."
-                    value={artworkForm.description}
-                    onChange={(e) => setArtworkForm({ ...artworkForm, description: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17]"
-                  />
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e6e2d8]">
-                  <button
-                    type="button"
-                    onClick={handleCloseArtworkModal}
-                    className="px-4 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-medium hover:bg-red-50 hover:text-red-700 rounded cursor-pointer transition-colors"
-                  >
-                    {isSavingArtwork ? "Cancel Upload" : "Cancel"}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSavingArtwork}
-                    className="px-5 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded font-medium transition-colors cursor-pointer flex items-center gap-2"
-                  >
-                    {isSavingArtwork ? (
-                      <>
-                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <span>{editingArtwork ? "Save Artwork Changes" : "Create Artwork"}</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ArtworkModal
+        isOpen={isArtworkModalOpen}
+        editingArtwork={editingArtwork}
+        onClose={() => setIsArtworkModalOpen(false)}
+        onSuccess={handleArtworkSuccess}
+        showToast={showToast}
+      />
 
       {/* DELETE ARTWORK CONFIRMATION MODAL */}
       <AnimatePresence>

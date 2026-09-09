@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, ShoppingBag } from "lucide-react";
+import { Menu, ShoppingBag, LogOut } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { useCart } from "@/context/CartContext";
 
@@ -97,7 +97,7 @@ export default function Navbar() {
           )}
 
           {/* Desktop Socials, Cart Button / Mobile Menu Button - Absolute Right Alignment */}
-          {!isAdmin && (
+          {!isAdmin ? (
             <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-3 sm:space-x-4">
               {/* Desktop Socials */}
               <div className={socialsClass}>
@@ -134,6 +134,22 @@ export default function Navbar() {
                 aria-label="Toggle menu"
               >
                 <Menu size={24} />
+              </button>
+            </div>
+          ) : (
+            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center">
+              <button
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    sessionStorage.removeItem("gvr_admin_auth");
+                    window.location.reload();
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-red-700 font-semibold transition-colors cursor-pointer"
+                title="Sign Out of Admin"
+              >
+                <LogOut size={15} />
+                <span>Sign Out</span>
               </button>
             </div>
           )}

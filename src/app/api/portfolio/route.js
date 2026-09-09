@@ -163,6 +163,11 @@ export async function PATCH(request) {
         if (sourceObj.category !== undefined || sourceObj.category_name !== undefined) {
           updateFields.category_name = sourceObj.category || sourceObj.category_name;
         }
+        if (sourceObj.new_src !== undefined) {
+          updateFields.src = sourceObj.new_src;
+        } else if (sourceObj.src !== undefined && targetId) {
+          updateFields.src = sourceObj.src;
+        }
         if (sourceObj.width !== undefined) updateFields.width = sourceObj.width;
         if (sourceObj.height !== undefined) updateFields.height = sourceObj.height;
         if (sourceObj.display_order !== undefined) updateFields.display_order = sourceObj.display_order;
