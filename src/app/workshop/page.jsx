@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Ticket } from "lucide-react";
 import { WORKSHOP_DATA } from "@/data/workshop";
 import WorkshopHero from "@/components/workshop/WorkshopHero";
 import WorkshopHighlights from "@/components/workshop/WorkshopHighlights";
@@ -10,8 +12,10 @@ import WorkshopInstructor from "@/components/workshop/WorkshopInstructor";
 import WorkshopRegistrationForm from "@/components/workshop/WorkshopRegistrationForm";
 import WorkshopPaymentView from "@/components/workshop/WorkshopPaymentView";
 import WorkshopTicketConfirmation from "@/components/workshop/WorkshopTicketConfirmation";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function WorkshopPage() {
+  const { isWorkshopEnabled, isLoaded } = useSettings();
   // Navigation Flow State: 'landing' | 'register' | 'payment' | 'confirmation'
   const [currentStep, setCurrentStep] = useState("landing");
   
@@ -49,6 +53,33 @@ export default function WorkshopPage() {
     setCurrentStep("landing");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  if (isLoaded && !isWorkshopEnabled) {
+    return (
+      <div className="min-h-[70vh] bg-[#f5f2eb] px-4 sm:px-8 py-24 flex flex-col items-center justify-center text-center text-[#1c1a17]">
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="w-16 h-16 rounded-full bg-[#E2DDD3] border border-[#d8d3c5] flex items-center justify-center mx-auto text-[#A97C5B]">
+            <Ticket size={28} />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.3em] text-[#A97C5B] font-semibold">Photography Masterclasses</span>
+            <h1 className="text-3xl sm:text-4xl font-serif uppercase tracking-widest font-light text-[#1c1a17]">
+              Workshops <span className="font-semibold italic text-[#A97C5B]">Unavailable</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-600 font-light leading-relaxed">
+              Offline photography masterclasses and workshop registrations are currently closed in site settings.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-block px-8 py-3 bg-[#1c1a17] text-[#f5f2eb] text-xs uppercase tracking-widest font-semibold hover:bg-black transition-colors"
+          >
+            Return to Portfolio
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#f5f2eb] text-[#1c1a17]">

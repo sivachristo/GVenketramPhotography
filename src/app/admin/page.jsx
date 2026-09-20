@@ -37,8 +37,11 @@ import {
   Phone,
   Lock,
   LogOut,
-  EyeOff
+  EyeOff,
+  Sliders,
+  Settings as SettingsIcon,
 } from "lucide-react";
+import { useSettings } from "@/context/SettingsContext";
 import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
 import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal";
 import ArtworkModal from "@/components/admin/ArtworkModal";

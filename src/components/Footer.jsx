@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Heart } from "lucide-react";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Footer() {
+  const { isArtGalleryEnabled, isWorkshopEnabled } = useSettings();
+
   return (
     <footer className="w-full border-t border-[#d8d3c5] bg-[#E2DDD3] text-neutral-500 py-12 mt-auto">
       <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 px-4 sm:px-8 lg:px-12">
@@ -20,19 +25,23 @@ export default function Footer() {
           <Link href="/" className="hover:text-black transition-colors duration-300">
             Home
           </Link>
-          <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
-            Art Gallery
-          </Link>
-          <Link href="/workshop" className="hover:text-black transition-colors duration-300">
-            Workshop
-          </Link>
+          {isArtGalleryEnabled && (
+            <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
+              Art Gallery
+            </Link>
+          )}
+          {isWorkshopEnabled && (
+            <Link href="/workshop" className="hover:text-black transition-colors duration-300">
+              Workshop
+            </Link>
+          )}
           <Link href="/about" className="hover:text-black transition-colors duration-300">
             About
           </Link>
           <Link href="/contact" className="hover:text-black transition-colors duration-300">
             Contact
           </Link>
-          <Link href="/Admin" className="hover:text-black transition-colors duration-300">
+          <Link href="/admin" className="hover:text-black transition-colors duration-300">
             Admin
           </Link>
         </div>

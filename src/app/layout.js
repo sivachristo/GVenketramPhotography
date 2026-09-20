@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { CartProvider } from "@/context/CartContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -30,14 +31,16 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-[#f5f2eb] text-[#1c1a17] selection:bg-[#1c1a17] selection:text-[#f5f2eb] font-sans">
-        <CartProvider>
-          <Navbar />
-          <main className="flex-grow flex flex-col">
-            {children}
-          </main>
-          <Footer />
-          <CartDrawer />
-        </CartProvider>
+        <SettingsProvider>
+          <CartProvider>
+            <Navbar />
+            <main className="flex-grow flex flex-col">
+              {children}
+            </main>
+            <Footer />
+            <CartDrawer />
+          </CartProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

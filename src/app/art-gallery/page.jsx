@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import ArtworkCard from "@/components/ArtworkCard";
 import { artworksData as initialData, ARTWORK_CATEGORIES } from "@/data/artworks";
 import { fadeIn } from "@/utils/animations";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function ArtGalleryPage() {
+  const { isArtGalleryEnabled, isLoaded } = useSettings();
   const [artworks, setArtworks] = useState(initialData);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,6 +52,37 @@ export default function ArtGalleryPage() {
         return 0; // featured default order
       });
   }, [artworks, activeCategory, searchQuery, sortBy]);
+
+  if (isLoaded && !isArtGalleryEnabled) {
+    return (
+      <div className="min-h-[70vh] bg-[#f5f2eb] px-4 sm:px-8 py-24 flex flex-col items-center justify-center text-center text-[#1c1a17]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md mx-auto space-y-6"
+        >
+          <div className="w-16 h-16 rounded-full bg-[#E2DDD3] border border-[#d8d3c5] flex items-center justify-center mx-auto text-[#A97C5B]">
+            <Sparkles size={28} />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.3em] text-[#A97C5B] font-semibold">Fine Art Gallery</span>
+            <h1 className="text-3xl sm:text-4xl font-serif uppercase tracking-widest font-light text-[#1c1a17]">
+              Currently <span className="font-semibold italic text-[#A97C5B]">Unavailable</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-600 font-light leading-relaxed">
+              The Art Gallery fine-art catalog is currently offline. Please explore the portfolio or check back soon.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-block px-8 py-3 bg-[#1c1a17] text-[#f5f2eb] text-xs uppercase tracking-widest font-semibold hover:bg-black transition-colors"
+          >
+            Return to Portfolio
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f2eb] px-4 sm:px-8 lg:px-12 py-16 text-[#1c1a17]">

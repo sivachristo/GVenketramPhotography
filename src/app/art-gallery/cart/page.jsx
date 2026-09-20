@@ -17,8 +17,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function CartPage() {
+  const { isArtGalleryEnabled, isLoaded } = useSettings();
   const {
     cartItems,
     removeFromCart,
@@ -29,6 +31,33 @@ export default function CartPage() {
   } = useCart();
 
   const [showCheckoutNotice, setShowCheckoutNotice] = useState(false);
+
+  if (isLoaded && !isArtGalleryEnabled) {
+    return (
+      <div className="min-h-[70vh] bg-[#f5f2eb] px-4 sm:px-8 py-24 flex flex-col items-center justify-center text-center text-[#1c1a17]">
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="w-16 h-16 rounded-full bg-[#E2DDD3] border border-[#d8d3c5] flex items-center justify-center mx-auto text-[#A97C5B]">
+            <ShoppingBag size={28} />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.3em] text-[#A97C5B] font-semibold">Fine Art Orders</span>
+            <h1 className="text-3xl sm:text-4xl font-serif uppercase tracking-widest font-light text-[#1c1a17]">
+              Checkout <span className="font-semibold italic text-[#A97C5B]">Disabled</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-600 font-light leading-relaxed">
+              The Art Gallery and checkout features are currently inactive in site settings.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-block px-8 py-3 bg-[#1c1a17] text-[#f5f2eb] text-xs uppercase tracking-widest font-semibold hover:bg-black transition-colors"
+          >
+            Return to Portfolio
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f2eb] px-4 sm:px-8 lg:px-12 py-16 text-[#1c1a17]">

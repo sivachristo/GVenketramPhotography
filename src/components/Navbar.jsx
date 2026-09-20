@@ -3,19 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, ShoppingBag, LogOut } from "lucide-react";
+import { Menu, ShoppingBag, LogOut, Sliders } from "lucide-react";
 import Sidebar from "./Sidebar";
+import AdminSettingsModal from "@/components/admin/AdminSettingsModal";
 import { useCart } from "@/context/CartContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const pathname = usePathname();
   const { cartCount, toggleCart } = useCart();
+  const { isArtGalleryEnabled, isWorkshopEnabled } = useSettings();
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Art Gallery", href: "/art-gallery" },
-    { name: "Workshop", href: "/workshop" },
+    ...(isArtGalleryEnabled ? [{ name: "Art Gallery", href: "/art-gallery" }] : []),
+    ...(isWorkshopEnabled ? [{ name: "Workshop", href: "/workshop" }] : []),
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];
@@ -112,20 +116,22 @@ export default function Navbar() {
                 </a>
               </div>
 
-              {/* Shopping Cart Button */}
-              <button
-                onClick={toggleCart}
-                className={cartButtonClass}
-                aria-label="Shopping Cart"
-                title="View Artwork Cart"
-              >
-                <ShoppingBag size={20} />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#A97C5B] text-[9px] font-bold text-white shadow">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
+              {/* Shopping Cart Button (Shown only when Art Gallery module is enabled) */}
+              {isArtGalleryEnabled && (
+                <button
+                  onClick={toggleCart}
+                  className={cartButtonClass}
+                  aria-label="Shopping Cart"
+                  title="View Artwork Cart"
+                >
+                  <ShoppingBag size={20} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#A97C5B] text-[9px] font-bold text-white shadow">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {/* Mobile Menu Button */}
               <button
@@ -137,7 +143,20 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center">
+            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
+              {/* Settings Button Next to Sign Out */}
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-semibold transition-colors cursor-pointer px-2.5 py-1 rounded hover:bg-neutral-200/50"
+                title="Site Settings & Visibility"
+              >
+                <Sliders size={14} />
+                <span>Settings</span>
+              </button>
+
+              <div className="h-4 w-px bg-[#d8d3c5]" />
+
+              {/* Sign Out Button */}
               <button
                 onClick={() => {
                   if (typeof window !== "undefined") {
@@ -145,7 +164,7 @@ export default function Navbar() {
                     window.location.reload();
                   }
                 }}
-                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-red-700 font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-red-700 font-semibold transition-colors cursor-pointer px-2.5 py-1 rounded hover:bg-red-100/50"
                 title="Sign Out of Admin"
               >
                 <LogOut size={15} />
@@ -156,6 +175,14 @@ export default function Navbar() {
 
         </div>
       </header>
+
+      {/* Admin Settings Modal */}
+      {isAdmin && (
+        <AdminSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
 
       {/* Sidebar for Mobile */}
       <Sidebar isOpen={isOpen} onClose={() => setIsOpen(false)} navLinks={navLinks} />
