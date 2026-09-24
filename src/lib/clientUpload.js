@@ -13,9 +13,89 @@ export function formatTitleFromFilename(filename) {
  * - Returns { blob, width, height, uniqueFilename }
  */
 export async function compressImageClient(file, maxDimension = 4096, quality = 0.85) {
+  const fileNameLower = (file.name || "").toLowerCase();
+  const isTiff =
+    fileNameLower.endsWith(".tif") ||
+    fileNameLower.endsWith(".tiff") ||
+    file.type === "image/tiff" ||
+    file.type === "image/tif";
+
+  // Dedicated decoder for .tif and .tiff files (which browsers cannot render natively)
+  if (isTiff) {
+    try {
+      const utifModule = await import("utif");
+      const UTIF = utifModule.default || utifModule;
+      const arrayBuffer = await file.arrayBuffer();
+      const ifds = UTIF.decode(arrayBuffer);
+      if (!ifds || ifds.length === 0) {
+        throw new Error("Unable to parse TIFF structure");
+      }
+      UTIF.decodeImage(arrayBuffer, ifds[0]);
+      const rgba = UTIF.toRGBA8(ifds[0]);
+      const origWidth = ifds[0].width;
+      const origHeight = ifds[0].height;
+
+      const srcCanvas = document.createElement("canvas");
+      srcCanvas.width = origWidth;
+      srcCanvas.height = origHeight;
+      const sCtx = srcCanvas.getContext("2d");
+      const clamped = new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.byteLength);
+      const imgData = new ImageData(clamped, origWidth, origHeight);
+      sCtx.putImageData(imgData, 0, 0);
+
+      let width = origWidth;
+      let height = origHeight;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(srcCanvas, 0, 0, width, height);
+
+      const baseName = file.name
+        .toLowerCase()
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${baseName}.webp`;
+
+      return new Promise((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            resolve({
+              blob: blob || file,
+              width,
+              height,
+              uniqueFilename,
+            });
+          },
+          "image/webp",
+          quality
+        );
+      });
+    } catch (tiffErr) {
+      console.error("TIFF decoding error:", tiffErr);
+      throw new Error(`Failed to decode TIFF image: ${tiffErr.message || "Invalid TIFF format"}`);
+    }
+  }
+
   return new Promise((resolve, reject) => {
-    // If it's not an image file (e.g. SVG or strange type), pass through
-    if (!file.type.startsWith("image/")) {
+    const isStandardImage =
+      file.type?.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(file.name);
+
+    // If it's not a recognized image format, pass through
+    if (!isStandardImage) {
       const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${file.name}`;
       return resolve({
         blob: file,

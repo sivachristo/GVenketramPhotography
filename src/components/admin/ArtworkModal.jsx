@@ -292,7 +292,7 @@ export default function ArtworkModal({
                   ref={fileInputRef}
                   type="file"
                   multiple={false}
-                  accept="image/*"
+                  accept="image/*,.tif,.tiff"
                   required={!editingArtwork && !formData.image}
                   onChange={handleFileChange}
                   className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17] file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:uppercase file:font-semibold file:bg-[#1c1a17] file:text-white hover:file:bg-neutral-800 file:cursor-pointer"
