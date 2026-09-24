@@ -3,56 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, Coffee } from "lucide-react";
-
-const uploadWithProgress = (url, formData, signal, onProgress) => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-
-    if (signal) {
-      if (signal.aborted) {
-        return reject(new DOMException("Aborted", "AbortError"));
-      }
-      signal.addEventListener("abort", () => {
-        xhr.abort();
-        reject(new DOMException("Aborted", "AbortError"));
-      });
-    }
-
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 90);
-          onProgress(percent);
-        }
-      };
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const json = JSON.parse(xhr.responseText);
-          onProgress(95);
-          resolve(json);
-        } catch (err) {
-          reject(new Error("Invalid server response"));
-        }
-      } else {
-        try {
-          const json = JSON.parse(xhr.responseText);
-          reject(new Error(json.error || `Upload failed with status ${xhr.status}`));
-        } catch {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
-
-    xhr.send(formData);
-  });
-};
+import { uploadMultipleImages } from "@/lib/clientUpload";
 
 export default function AddPortfolioImageModal({
   isOpen,
@@ -158,21 +109,15 @@ export default function AddPortfolioImageModal({
 
     // 1. BULK FILE UPLOAD MODE
     if (uploadMode === "file" && selectedFiles.length > 0) {
-      const uploadFormData = new FormData();
-      selectedFiles.forEach((file) => {
-        uploadFormData.append("files", file);
-      });
-
       try {
-        setUploadStatusText(`Uploading ${selectedFiles.length} image(s)...`);
+        setUploadStatusText(`Compressing & uploading ${selectedFiles.length} image(s)...`);
 
-        const uploadData = await uploadWithProgress("/api/upload", uploadFormData, signal, (percent) => {
-          setUploadProgress(percent);
-          if (percent >= 90) {
-            setUploadStatusText(`Optimizing images on server...`);
-          } else {
-            setUploadStatusText(`Uploading ${selectedFiles.length} image(s) (${percent}%)...`);
-          }
+        const uploadData = await uploadMultipleImages(selectedFiles, {
+          signal,
+          onProgress: (percent, current, total) => {
+            setUploadProgress(percent);
+            setUploadStatusText(`Optimizing & uploading ${current} of ${total} (${percent}%)...`);
+          },
         });
 
         const uploadedFiles = uploadData.files || [];

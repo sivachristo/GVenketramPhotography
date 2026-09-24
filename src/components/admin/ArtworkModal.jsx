@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RotateCcw } from "lucide-react";
+import { uploadSingleImage } from "@/lib/clientUpload";
 
 export default function ArtworkModal({
   isOpen,
@@ -120,23 +121,10 @@ export default function ArtworkModal({
       let imageUrl = formData.image;
 
       if (selectedFile) {
-        setStatusText("Updating Image...");
-        const fd = new FormData();
-        fd.append("files", selectedFile);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: fd,
-          signal,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload artwork image file");
-        }
-
-        const uploadData = await uploadRes.json();
-        if (uploadData.files && uploadData.files.length > 0) {
-          imageUrl = uploadData.files[0].src;
+        setStatusText("Optimizing & Uploading Image...");
+        const uploadResult = await uploadSingleImage(selectedFile, { signal });
+        if (uploadResult?.src) {
+          imageUrl = uploadResult.src;
         }
       }
 

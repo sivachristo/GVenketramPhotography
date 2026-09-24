@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Pencil, Upload, Image as ImageIcon, RotateCcw, AlertCircle } from "lucide-react";
+import { uploadSingleImage } from "@/lib/clientUpload";
 
 export default function EditPortfolioImageModal({
   isOpen,
@@ -101,27 +102,14 @@ export default function EditPortfolioImageModal({
       let newWidth = image.width || 1600;
       let newHeight = image.height || 1200;
 
-      // 1. If replacement file selected, upload image
+      // 1. If replacement file selected, upload image     
       if (selectedFile) {
-        setStatusText("Updating Image...");
-        const fd = new FormData();
-        fd.append("files", selectedFile);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: fd,
-          signal,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload replacement image");
-        }
-
-        const uploadData = await uploadRes.json();
-        if (uploadData.files && uploadData.files.length > 0) {
-          newSrc = uploadData.files[0].src;
-          newWidth = uploadData.files[0].width || image.width || 1600;
-          newHeight = uploadData.files[0].height || image.height || 1200;
+        setStatusText("Optimizing & Uploading Image...");
+        const uploadResult = await uploadSingleImage(selectedFile, { signal });
+        if (uploadResult?.src) {
+          newSrc = uploadResult.src;
+          newWidth = uploadResult.width || image.width || 1600;
+          newHeight = uploadResult.height || image.height || 1200;
         }
       }
 
