@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, Coffee } from "lucide-react";
+import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, Coffee, Loader2 } from "lucide-react";
 import { uploadMultipleImages } from "@/lib/clientUpload";
 
 export default function AddPortfolioImageModal({
@@ -21,6 +21,9 @@ export default function AddPortfolioImageModal({
   const [uploadStatusText, setUploadStatusText] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [fileStatuses, setFileStatuses] = useState({});
+  const [fileErrors, setFileErrors] = useState({});
+  const [currentUploadingIndex, setCurrentUploadingIndex] = useState(-1);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -50,6 +53,9 @@ export default function AddPortfolioImageModal({
     setIsUploading(false);
     setUploadStatusText("");
     setUploadProgress(0);
+    setFileStatuses({});
+    setFileErrors({});
+    setCurrentUploadingIndex(-1);
     setSelectedFiles([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
     onClose();
@@ -57,6 +63,9 @@ export default function AddPortfolioImageModal({
 
   // Handle selecting files
   const handleFileChange = (e) => {
+    setFileStatuses({});
+    setFileErrors({});
+    setCurrentUploadingIndex(-1);
     const newSelected = Array.from(e.target.files || []);
     if (newSelected.length > 0) {
       // Append to existing files or replace
@@ -110,24 +119,44 @@ export default function AddPortfolioImageModal({
     // 1. BULK FILE UPLOAD MODE
     if (uploadMode === "file" && selectedFiles.length > 0) {
       try {
-        setUploadStatusText(`Compressing & uploading ${selectedFiles.length} image(s)...`);
+        const initialStatuses = {};
+        selectedFiles.forEach((_, idx) => {
+          initialStatuses[idx] = "waiting";
+        });
+        setFileStatuses(initialStatuses);
+        setFileErrors({});
+        setCurrentUploadingIndex(0);
+
+        setUploadStatusText(`Uploading 1 of ${selectedFiles.length}...`);
 
         const uploadData = await uploadMultipleImages(selectedFiles, {
           signal,
-          onProgress: (percent, current, total) => {
+          onItemStart: (index, file) => {
+            setCurrentUploadingIndex(index);
+            setFileStatuses((prev) => ({ ...prev, [index]: "uploading" }));
+            setUploadStatusText(`Uploading ${index + 1} of ${selectedFiles.length}: "${file.name}"...`);
+          },
+          onItemComplete: (index) => {
+            setFileStatuses((prev) => ({ ...prev, [index]: "done" }));
+          },
+          onItemError: (index, file, err) => {
+            setFileStatuses((prev) => ({ ...prev, [index]: "error" }));
+            setFileErrors((prev) => ({ ...prev, [index]: err?.message || "Upload failed" }));
+          },
+          onProgress: (percent) => {
             setUploadProgress(percent);
-            setUploadStatusText(`Optimizing & uploading ${current} of ${total} (${percent}%)...`);
           },
         });
 
         const uploadedFiles = uploadData.files || [];
+        const failedUploads = uploadData.errors || [];
 
         if (uploadedFiles.length === 0) {
-          throw new Error("No files were successfully uploaded");
+          throw new Error("No files were successfully uploaded. Please check your connection or file types.");
         }
 
         setUploadProgress(95);
-        setUploadStatusText(`Saving ${uploadedFiles.length} image(s) to database...`);
+        setUploadStatusText(`Saving ${uploadedFiles.length} uploaded image(s) to database...`);
 
         const imagesToCreate = uploadedFiles.map((uf, idx) => ({
           src: uf.src,
@@ -174,10 +203,26 @@ export default function AddPortfolioImageModal({
           position_num: item.display_order ?? idx + 1,
         }));
 
+        if (failedUploads.length > 0) {
+          if (showToast) {
+            showToast(`${uploadedFiles.length} photo(s) uploaded. ${failedUploads.length} photo(s) failed.`, "warning");
+          }
+          if (onSuccess) onSuccess(createdItems, targetCategory);
+          setIsUploading(false);
+          setUploadProgress(0);
+          setUploadStatusText(`${uploadedFiles.length} saved successfully. ${failedUploads.length} photo(s) failed — see list below.`);
+          const failedIndices = new Set(failedUploads.map((f) => f.index));
+          setSelectedFiles((prev) => prev.filter((_, idx) => failedIndices.has(idx)));
+          return;
+        }
+
         setIsUploading(false);
         setUploadStatusText("");
         setUploadProgress(0);
         setSelectedFiles([]);
+        setFileStatuses({});
+        setFileErrors({});
+        setCurrentUploadingIndex(-1);
         setFormData({
           title: "",
           src: "",
@@ -186,6 +231,11 @@ export default function AddPortfolioImageModal({
           height: 1200,
           description: "",
         });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+
+        if (showToast) {
+          showToast(`Successfully uploaded ${uploadedFiles.length} image(s)!`, "success");
+        }
 
         if (onSuccess) {
           onSuccess(createdItems, targetCategory);
@@ -378,9 +428,9 @@ export default function AddPortfolioImageModal({
                     className="w-full px-3 py-2 text-xs bg-white border border-[#e6e2d8] rounded focus:outline-none focus:border-[#1c1a17] file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[11px] file:uppercase file:tracking-wider file:font-semibold file:bg-[#1c1a17] file:text-white hover:file:bg-neutral-800 file:cursor-pointer"
                   />
 
-                  {/* Selected Files List with Delete Buttons */}
+                  {/* Selected Files List with Live Upload Statuses */}
                   {selectedFiles.length > 0 && (
-                    <div className="mt-2.5 p-3 bg-[#e6e2d8]/50 border border-[#d8d3c5] rounded text-xs space-y-2 max-h-48 overflow-y-auto">
+                    <div className="mt-2.5 p-3 bg-[#e6e2d8]/50 border border-[#d8d3c5] rounded text-xs space-y-2 max-h-52 overflow-y-auto">
                       <div className="font-semibold text-[#1c1a17] text-[11px] uppercase tracking-wider flex justify-between items-center pb-1 border-b border-[#d8d3c5]">
                         <span className="flex items-center gap-1.5">
                           <CheckCircle2 size={13} className="text-emerald-700" />
@@ -388,41 +438,112 @@ export default function AddPortfolioImageModal({
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="text-neutral-600 font-mono text-[10px]">{totalSizeMB} MB</span>
-                          <button
-                            type="button"
-                            onClick={handleClearAllFiles}
-                            className="text-[10px] text-red-600 hover:text-red-800 hover:underline uppercase font-bold tracking-wider cursor-pointer"
-                          >
-                            Clear all
-                          </button>
+                          {!isUploading && (
+                            <button
+                              type="button"
+                              onClick={handleClearAllFiles}
+                              className="text-[10px] text-red-600 hover:text-red-800 hover:underline uppercase font-bold tracking-wider cursor-pointer"
+                            >
+                              Clear all
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <ul className="space-y-1 text-neutral-700 font-mono text-[10px]">
-                        {selectedFiles.map((file, i) => (
-                          <li
-                            key={`${file.name}-${file.size}-${i}`}
-                            className="py-1 px-1.5 rounded hover:bg-white/60 flex items-center justify-between gap-2 group transition-colors"
-                          >
-                            <span className="truncate flex-1 font-sans text-[11px] text-neutral-800 font-medium" title={file.name}>
-                              <span className="font-mono text-[10px] text-neutral-400 mr-1.5">#{i + 1}</span>
-                              {file.name}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-neutral-500 font-mono text-[10px]">
-                                {(file.size / 1024).toFixed(0)} KB
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => handleRemoveFile(i, e)}
-                                title={`Remove ${file.name}`}
-                                className="p-1 rounded-full text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
+                      <ul className="space-y-1.5 text-neutral-700 font-mono text-[10px]">
+                        {selectedFiles.map((file, i) => {
+                          const status = fileStatuses[i];
+                          const errorMsg = fileErrors[i];
+                          const isCurrent = status === "uploading";
+                          const isDone = status === "done";
+                          const isFailed = status === "error";
+
+                          return (
+                            <li
+                              key={`${file.name}-${file.size}-${i}`}
+                              className={`py-1.5 px-2 rounded flex items-center justify-between gap-2 transition-all ${
+                                isCurrent
+                                  ? "bg-amber-100/90 border border-amber-300 shadow-xs"
+                                  : isDone
+                                  ? "bg-emerald-50/70 border border-emerald-200/60"
+                                  : isFailed
+                                  ? "bg-red-50 border border-red-200"
+                                  : "hover:bg-white/60"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                                <span className="font-mono text-[10px] text-neutral-400 shrink-0">#{i + 1}</span>
+                                <span
+                                  className={`truncate font-sans text-[11px] font-medium ${
+                                    isCurrent
+                                      ? "text-amber-950 font-bold"
+                                      : isDone
+                                      ? "text-emerald-950"
+                                      : isFailed
+                                      ? "text-red-900"
+                                      : "text-neutral-800"
+                                  }`}
+                                  title={file.name}
+                                >
+                                  {file.name}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isDone && (
+                                  <span className="flex items-center gap-1 text-emerald-700 font-sans font-semibold text-[10px] bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                    <CheckCircle2 size={11} />
+                                    <span>Uploaded</span>
+                                  </span>
+                                )}
+
+                                {isCurrent && (
+                                  <span className="flex items-center gap-1 text-amber-800 font-sans font-semibold text-[10px] bg-amber-200/90 px-2 py-0.5 rounded-full animate-pulse">
+                                    <Loader2 size={11} className="animate-spin" />
+                                    <span>Uploading...</span>
+                                  </span>
+                                )}
+
+                                {isFailed && (
+                                  <span
+                                    className="flex items-center gap-1 text-red-700 font-sans font-semibold text-[10px] bg-red-100 px-2 py-0.5 rounded-full"
+                                    title={errorMsg || "Upload error"}
+                                  >
+                                    <AlertCircle size={11} />
+                                    <span className="max-w-[130px] truncate">{errorMsg ? `Failed: ${errorMsg}` : "Failed"}</span>
+                                  </span>
+                                )}
+
+                                {!status && (
+                                  <span className="text-neutral-500 font-mono text-[10px]">
+                                    {(file.size / 1024).toFixed(0)} KB
+                                  </span>
+                                )}
+
+                                {status === "waiting" && (
+                                  <span className="text-neutral-500 font-sans text-[10px] italic">
+                                    {i === currentUploadingIndex + 1 ? (
+                                      <span className="text-amber-800 font-medium not-italic bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50">Next in queue</span>
+                                    ) : (
+                                      "Waiting in queue"
+                                    )}
+                                  </span>
+                                )}
+
+                                {!isUploading && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleRemoveFile(i, e)}
+                                    title={`Remove ${file.name}`}
+                                    className="p-1 rounded-full text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   )}
@@ -586,7 +707,7 @@ export default function AddPortfolioImageModal({
                   {isLargeUpload && (
                     <p className="text-[11px] text-amber-800/90 italic flex items-center gap-1.5 pt-0.5 border-t border-[#d8d3c5]/50">
                       <Coffee size={13} className="shrink-0 text-amber-700" />
-                      <span>Sipping coffee... processing high-res images on server</span>
+                      <span>Sipping coffee... uploading high-res images</span>
                     </p>
                   )}
                 </div>

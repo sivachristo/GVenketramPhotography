@@ -121,7 +121,7 @@ export default function ArtworkModal({
       let imageUrl = formData.image;
 
       if (selectedFile) {
-        setStatusText("Optimizing & Uploading Image...");
+        setStatusText("Uploading Image...");
         const uploadResult = await uploadSingleImage(selectedFile, { signal });
         if (uploadResult?.src) {
           imageUrl = uploadResult.src;

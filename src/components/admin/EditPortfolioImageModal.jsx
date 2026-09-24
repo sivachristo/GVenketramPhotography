@@ -104,7 +104,7 @@ export default function EditPortfolioImageModal({
 
       // 1. If replacement file selected, upload image     
       if (selectedFile) {
-        setStatusText("Optimizing & Uploading Image...");
+        setStatusText("Uploading Image...");
         const uploadResult = await uploadSingleImage(selectedFile, { signal });
         if (uploadResult?.src) {
           newSrc = uploadResult.src;

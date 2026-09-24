@@ -165,30 +165,61 @@ export async function uploadSingleImage(file, { signal, bucket = "portfolio-imag
 }
 
 /**
- * Uploads multiple files sequentially or concurrently with progress tracking.
+ * Uploads multiple files sequentially with per-item progress tracking and resilient error handling.
+ * Continues uploading remaining files even if an individual file fails.
  */
-export async function uploadMultipleImages(files, { onProgress, signal, bucket = "portfolio-images" } = {}) {
+export async function uploadMultipleImages(files, {
+  onProgress,
+  onItemStart,
+  onItemComplete,
+  onItemError,
+  signal,
+  bucket = "portfolio-images",
+} = {}) {
   const total = files.length;
-  if (total === 0) return { success: true, files: [] };
+  if (total === 0) return { success: true, files: [], errors: [] };
 
-  const results = [];
+  const successful = [];
+  const errors = [];
+
   for (let i = 0; i < total; i++) {
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
 
     const file = files[i];
-    const uploaded = await uploadSingleImage(file, { signal, bucket });
-    results.push(uploaded);
+    if (onItemStart) {
+      onItemStart(i, file);
+    }
+
+    try {
+      const uploaded = await uploadSingleImage(file, { signal, bucket });
+      successful.push(uploaded);
+      if (onItemComplete) {
+        onItemComplete(i, file, uploaded);
+      }
+    } catch (err) {
+      console.error(`Error uploading ${file.name}:`, err);
+      const errorItem = {
+        index: i,
+        fileName: file.name,
+        error: err.message || "Upload failed",
+      };
+      errors.push(errorItem);
+      if (onItemError) {
+        onItemError(i, file, err);
+      }
+    }
 
     if (onProgress) {
       const percent = Math.round(((i + 1) / total) * 90);
-      onProgress(percent, i + 1, total);
+      onProgress(percent, i + 1, total, file);
     }
   }
 
   return {
-    success: true,
-    files: results,
+    success: successful.length > 0,
+    files: successful,
+    errors,
   };
 }
