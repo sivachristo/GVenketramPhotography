@@ -14,12 +14,12 @@ export default function Navbar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const pathname = usePathname();
   const { cartCount, toggleCart } = useCart();
-  const { isArtGalleryEnabled, isWorkshopEnabled } = useSettings();
+  const { isArtGalleryEnabled, isWorkshopEnabled, isLoaded } = useSettings();
 
   const navLinks = [
     { name: "Home", href: "/" },
-    ...(isArtGalleryEnabled ? [{ name: "Art Gallery", href: "/art-gallery" }] : []),
-    ...(isWorkshopEnabled ? [{ name: "Workshop", href: "/workshop" }] : []),
+    ...(isLoaded && isArtGalleryEnabled ? [{ name: "Art Gallery", href: "/art-gallery" }] : []),
+    ...(isLoaded && isWorkshopEnabled ? [{ name: "Workshop", href: "/workshop" }] : []),
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];

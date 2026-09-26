@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
 // PATCH /api/portfolio/[id] - Updates a single record by ID with only the changed fields
 export async function PATCH(request, { params }) {
@@ -87,6 +88,20 @@ export async function DELETE(request, { params }) {
             .remove([decodeURIComponent(part)]);
           break;
         }
+      }
+    } else if (item?.src && item.src.includes("res.cloudinary.com") && isCloudinaryConfigured) {
+      try {
+        const uploadIdx = item.src.indexOf("/upload/");
+        if (uploadIdx !== -1) {
+          const afterUpload = item.src.substring(uploadIdx + 8);
+          const withoutVersion = afterUpload.replace(/^v\d+\//, "");
+          const publicId = withoutVersion.replace(/\.[^/.]+$/, "");
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+          }
+        }
+      } catch (cErr) {
+        console.error("Failed to delete Cloudinary resource:", cErr.message);
       }
     }
 

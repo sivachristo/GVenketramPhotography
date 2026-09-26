@@ -3,13 +3,9 @@ import path from "path";
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { formatTitleFromFilename } from "@/utils/formatTitle";
 import sharp from "sharp";
 
-function formatTitleFromFilename(filename) {
-  const base = filename.replace(/\.[^/.]+$/, "");
-  const clean = base.replace(/[-_]+/g, " ").trim();
-  return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "Untitled Artwork";
-}
 
 /**
  * Compress any incoming image to WebP via Sharp.

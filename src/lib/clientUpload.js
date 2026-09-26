@@ -1,10 +1,7 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { formatTitleFromFilename } from "../utils/formatTitle";
 
-export function formatTitleFromFilename(filename) {
-  const base = filename.replace(/\.[^/.]+$/, "");
-  const clean = base.replace(/[-_]+/g, " ").trim();
-  return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "Untitled Artwork";
-}
+export { formatTitleFromFilename };
 
 /**
  * Compresses an image in the browser using HTML5 Canvas.
@@ -22,6 +19,8 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
 
   // Dedicated decoder for .tif and .tiff files (which browsers cannot render natively)
   if (isTiff) {
+    let srcCanvas = null;
+    let canvas = null;
     try {
       const utifModule = await import("utif");
       const UTIF = utifModule.default || utifModule;
@@ -35,7 +34,7 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
       const origWidth = ifds[0].width;
       const origHeight = ifds[0].height;
 
-      const srcCanvas = document.createElement("canvas");
+      srcCanvas = document.createElement("canvas");
       srcCanvas.width = origWidth;
       srcCanvas.height = origHeight;
       const sCtx = srcCanvas.getContext("2d");
@@ -55,7 +54,7 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
         }
       }
 
-      const canvas = document.createElement("canvas");
+      canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
@@ -69,13 +68,11 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
         .replace(/^-|-$/g, "");
       const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${baseName}.webp`;
 
-      return new Promise((resolve) => {
+      return await new Promise((resolve) => {
         canvas.toBlob(
           (blob) => {
-            srcCanvas.width = 0;
-            srcCanvas.height = 0;
-            canvas.width = 0;
-            canvas.height = 0;
+            if (srcCanvas) { srcCanvas.width = 0; srcCanvas.height = 0; }
+            if (canvas) { canvas.width = 0; canvas.height = 0; }
             resolve({
               blob: blob || file,
               width,
@@ -88,6 +85,8 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
         );
       });
     } catch (tiffErr) {
+      if (srcCanvas) { srcCanvas.width = 0; srcCanvas.height = 0; }
+      if (canvas) { canvas.width = 0; canvas.height = 0; }
       console.error("TIFF decoding error:", tiffErr);
       throw new Error(`Failed to decode TIFF image: ${tiffErr.message || "Invalid TIFF format"}`);
     }
@@ -180,18 +179,16 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
 
 /**
  * Uploads a single file:
- * 1. Compresses to WebP in browser (cutting 15-30MB down to <1MB)
- * 2. Uploads via /api/upload to Cloudinary (25 GB Free Storage)
- * 3. Falls back to direct Supabase Storage if API upload is unreachable
+ * 1. Uploads original file directly via /api/upload to Cloudinary (Sharp handles server compression once)
+ * 2. Falls back to direct Supabase Storage with client compression if API upload is unreachable
  */
 export async function uploadSingleImage(file, { signal, bucket = "portfolio-images" } = {}) {
   const formattedTitle = formatTitleFromFilename(file.name);
-  const { blob, width, height, uniqueFilename } = await compressImageClient(file);
 
   // 1. Primary: Server API Upload (Routes to Cloudinary 25 GB Free Storage)
   try {
     const formData = new FormData();
-    formData.append("files", blob, uniqueFilename);
+    formData.append("files", file, file.name);
 
     const res = await fetch("/api/upload", {
       method: "POST",
@@ -209,8 +206,8 @@ export async function uploadSingleImage(file, { signal, bucket = "portfolio-imag
           src: fileResult.src,
           title: formattedTitle,
           originalName: file.name,
-          width: fileResult.width || width,
-          height: fileResult.height || height,
+          width: fileResult.width,
+          height: fileResult.height,
           storage: fileResult.storage || "cloudinary",
         };
       }
@@ -221,9 +218,10 @@ export async function uploadSingleImage(file, { signal, bucket = "portfolio-imag
     console.warn("API upload exception, falling back to Supabase direct upload:", apiErr);
   }
 
-  // 2. Fallback: Direct Supabase Storage Upload
+  // 2. Fallback: Direct Supabase Storage Upload (Client compression used only as fallback)
   if (isSupabaseConfigured && supabase) {
     try {
+      const { blob, width, height, uniqueFilename } = await compressImageClient(file);
       const { data: uploadResult, error: uploadErr } = await supabase.storage
         .from(bucket)
         .upload(uniqueFilename, blob, {

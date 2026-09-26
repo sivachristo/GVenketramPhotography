@@ -29,10 +29,6 @@ export async function uploadToCloudinary(buffer, folder = 'portfolio') {
       {
         folder,
         resource_type: 'image',
-        // Cloudinary auto-delivers optimized WebP/AVIF format based on browser support
-        transformation: [
-          { fetch_format: 'auto', quality: 'auto:good' }
-        ]
       },
       (error, result) => {
         if (error) return reject(error);
