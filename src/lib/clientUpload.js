@@ -181,14 +181,47 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
 /**
  * Uploads a single file:
  * 1. Compresses to WebP in browser (cutting 15-30MB down to <1MB)
- * 2. Uploads directly to Supabase Storage (bypassing Vercel 4.5MB limit)
- * 3. Falls back to /api/upload with compressed WebP if Supabase isn't reachable
+ * 2. Uploads via /api/upload to Cloudinary (25 GB Free Storage)
+ * 3. Falls back to direct Supabase Storage if API upload is unreachable
  */
 export async function uploadSingleImage(file, { signal, bucket = "portfolio-images" } = {}) {
   const formattedTitle = formatTitleFromFilename(file.name);
   const { blob, width, height, uniqueFilename } = await compressImageClient(file);
 
-  // 1. Direct Supabase Storage Upload (Bypasses Vercel completely)
+  // 1. Primary: Server API Upload (Routes to Cloudinary 25 GB Free Storage)
+  try {
+    const formData = new FormData();
+    formData.append("files", blob, uniqueFilename);
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+      signal,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const fileResult = (data.files && data.files[0]) || data;
+
+      if (fileResult && fileResult.src) {
+        return {
+          success: true,
+          src: fileResult.src,
+          title: formattedTitle,
+          originalName: file.name,
+          width: fileResult.width || width,
+          height: fileResult.height || height,
+          storage: fileResult.storage || "cloudinary",
+        };
+      }
+    } else {
+      console.warn(`API upload returned status ${res.status}, falling back to Supabase direct upload.`);
+    }
+  } catch (apiErr) {
+    console.warn("API upload exception, falling back to Supabase direct upload:", apiErr);
+  }
+
+  // 2. Fallback: Direct Supabase Storage Upload
   if (isSupabaseConfigured && supabase) {
     try {
       const { data: uploadResult, error: uploadErr } = await supabase.storage
@@ -215,39 +248,12 @@ export async function uploadSingleImage(file, { signal, bucket = "portfolio-imag
           };
         }
       }
-      console.warn("Direct Supabase upload failed, falling back to API upload:", uploadErr);
     } catch (directErr) {
-      console.warn("Supabase direct upload exception, falling back to API:", directErr);
+      console.error("Supabase direct upload exception:", directErr);
     }
   }
 
-  // 2. Server API fallback (Sends pre-compressed <1MB WebP to prevent Vercel 413)
-  const formData = new FormData();
-  formData.append("files", blob, uniqueFilename);
-
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-    signal,
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Upload failed with status ${res.status}`);
-  }
-
-  const data = await res.json();
-  const fileResult = (data.files && data.files[0]) || data;
-
-  return {
-    success: true,
-    src: fileResult.src,
-    title: formattedTitle,
-    originalName: file.name,
-    width: fileResult.width || width,
-    height: fileResult.height || height,
-    storage: fileResult.storage || "api",
-  };
+  throw new Error("Failed to upload image to Cloudinary or Supabase.");
 }
 
 /**

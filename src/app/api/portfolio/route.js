@@ -288,13 +288,25 @@ export async function PATCH(request) {
           return NextResponse.json({ error: "Missing image 'id' or 'src' to delete" }, { status: 400 });
         }
 
-        // Remove from storage bucket if stored in Supabase Storage
-        if (targetSrc && targetSrc.includes("/portfolio-images/")) {
-          const filename = targetSrc.split("/portfolio-images/")[1]?.split("?")[0];
-          if (filename) {
-            await supabase.storage
-              .from("portfolio-images")
-              .remove([decodeURIComponent(filename)]);
+        let fileToDelete = targetSrc;
+        if (!fileToDelete && targetId) {
+          const { data: found } = await supabase
+            .from("portfolio_images")
+            .select("src")
+            .eq("id", targetId)
+            .single();
+          if (found?.src) fileToDelete = found.src;
+        }
+
+        if (fileToDelete && fileToDelete.includes("supabase.co/storage")) {
+          for (const bucket of ["portfolio-images", "artworks"]) {
+            const part = fileToDelete.split(`/${bucket}/`)[1]?.split("?")[0];
+            if (part) {
+              await supabase.storage
+                .from(bucket)
+                .remove([decodeURIComponent(part)]);
+              break;
+            }
           }
         }
 

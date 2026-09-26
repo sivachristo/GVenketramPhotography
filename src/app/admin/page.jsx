@@ -781,8 +781,8 @@ export default function AdminPage() {
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#f5f2eb]/10 border border-[#f5f2eb]/20 mb-4">
               <Lock size={22} className="text-[#f5f2eb]/70" />
             </div>
-            <h1 className="text-2xl font-serif uppercase tracking-[0.2em] text-[#f5f2eb] font-bold">
-              G. Venket Ram
+            <h1 className="text-xl sm:text-2xl font-serif uppercase tracking-[0.16em] text-[#f5f2eb] font-bold">
+              G VENKET RAM <span className="font-sans font-light text-[10px] sm:text-xs tracking-[0.25em] text-[#f5f2eb]/70 block mt-1 font-normal">PHOTOGRAPHY</span>
             </h1>
             <p className="text-[11px] uppercase tracking-[0.3em] text-[#f5f2eb]/40 mt-1 font-light">
               Admin Dashboard
@@ -801,7 +801,6 @@ export default function AdminPage() {
               <input
                 type="text"
                 autoComplete="username"
-                placeholder="g-venketram"
                 value={loginUsername}
                 onChange={(e) => { setLoginUsername(e.target.value); setLoginError(""); }}
                 className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#e6e2d8] rounded-lg focus:outline-none focus:border-[#1c1a17] transition-colors"
@@ -817,7 +816,6 @@ export default function AdminPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder="••••••"
                   value={loginPassword}
                   onChange={(e) => { setLoginPassword(e.target.value); setLoginError(""); }}
                   className="w-full px-3.5 py-2.5 text-sm bg-white border border-[#e6e2d8] rounded-lg focus:outline-none focus:border-[#1c1a17] transition-colors pr-10"

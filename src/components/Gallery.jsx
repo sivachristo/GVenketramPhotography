@@ -11,6 +11,8 @@ import { ChevronRight } from "lucide-react";
 
 // Custom Render Image component: clean grid of photos, metadata shown as a premium hover overlay
 function CustomRenderImage(props, { photo, width, height }) {
+  const showCategoryTag = props.showCategoryTag !== false;
+
   return (
     <div 
       onClick={props.onClick}
@@ -32,9 +34,11 @@ function CustomRenderImage(props, { photo, width, height }) {
       />
       {/* Premium Warm Beige Overlay on Hover (matching the beige theme, clean layout style) */}
       <div className="absolute inset-0 bg-[#f5f2eb]/90 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6 pointer-events-none">
-        <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-1 translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out">
-          {photo.category}
-        </span>
+        {showCategoryTag && (
+          <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-1 translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out">
+            {photo.category}
+          </span>
+        )}
         <h3 className="text-base font-light tracking-wider text-[#1c1a17] uppercase translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out font-serif">
           {photo.title}
         </h3>
@@ -155,7 +159,17 @@ export default function Gallery({ initialCategory = "All", categories, allImages
               <MasonryPhotoAlbum
                 photos={visiblePhotos}
                 onClick={({ index }) => setLightboxIndex(index)}
-                render={{ image: CustomRenderImage }}
+                render={{
+                  image: (renderProps, option) => (
+                    <CustomRenderImage
+                      {...renderProps}
+                      photo={option.photo}
+                      width={option.width}
+                      height={option.height}
+                      showCategoryTag={activeCategory === "All"}
+                    />
+                  ),
+                }}
                 columns={(containerWidth) => {
                   if (containerWidth < 640) return 1;
                   if (containerWidth < 1024) return 2;

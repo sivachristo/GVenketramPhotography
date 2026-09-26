@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 import sharp from "sharp";
 
 function formatTitleFromFilename(filename) {
@@ -13,8 +14,8 @@ function formatTitleFromFilename(filename) {
 /**
  * Compress any incoming image to WebP via Sharp.
  * - Bypasses Sharp's default 268MP pixel safety cap
- * - Resizes down to max 4096px on longest side (keeps aspect ratio)
- * - Converts to WebP at quality 82
+ * - Resizes down to max 2560px on longest side (keeps aspect ratio)
+ * - Converts to WebP at quality 80
  * Returns { buffer, width, height, uniqueFilename }
  */
 async function compressToWebP(file) {
@@ -30,15 +31,14 @@ async function compressToWebP(file) {
     .replace(/^-|-$/g, "");
   const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${baseName}.webp`;
 
-  // limitInputPixels: false — bypass Sharp's default ~268MP safety cap (we handle large images safely via resize)
   const { data: webpBuffer, info } = await sharp(inputBuffer, { limitInputPixels: false })
     .resize({
-      width: 4096,
-      height: 4096,
+      width: 2560,
+      height: 2560,
       fit: "inside",            // shrink proportionally, never crop
       withoutEnlargement: true, // don't upscale small images
     })
-    .webp({ quality: 82 })
+    .webp({ quality: 80 })
     .toBuffer({ resolveWithObject: true }); // returns { data, info } with real output dimensions
 
   return {
@@ -55,9 +55,25 @@ async function processSingleFile(file) {
   // --- Compress to WebP first ---
   const { buffer, width, height, uniqueFilename } = await compressToWebP(file);
 
+  // 1. Prioritize Cloudinary Upload (25 GB Free Storage)
+  if (isCloudinaryConfigured) {
+    try {
+      const cRes = await uploadToCloudinary(buffer, "portfolio");
+      return {
+        success: true,
+        src: cRes.secure_url,
+        title: formattedTitle,
+        originalName: file.name,
+        width: cRes.width || width,
+        height: cRes.height || height,
+        storage: "cloudinary",
+      };
+    } catch (cErr) {
+      console.error("Cloudinary upload failed, falling back to Supabase:", cErr.message);
+    }
+  }
 
-
-  // 1. Supabase Storage upload (compressed WebP)
+  // 2. Supabase Storage upload (fallback if Cloudinary is not configured)
   if (isSupabaseConfigured && supabase) {
     try {
       const { data: uploadResult, error: uploadErr } = await supabase.storage

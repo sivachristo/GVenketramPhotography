@@ -78,12 +78,15 @@ export async function DELETE(request, { params }) {
       .eq("id", id)
       .single();
 
-    if (item && item.src && item.src.includes("/portfolio-images/")) {
-      const filename = item.src.split("/portfolio-images/")[1]?.split("?")[0];
-      if (filename) {
-        await supabase.storage
-          .from("portfolio-images")
-          .remove([decodeURIComponent(filename)]);
+    if (item?.src && item.src.includes("supabase.co/storage")) {
+      for (const bucket of ["portfolio-images", "artworks"]) {
+        const part = item.src.split(`/${bucket}/`)[1]?.split("?")[0];
+        if (part) {
+          await supabase.storage
+            .from(bucket)
+            .remove([decodeURIComponent(part)]);
+          break;
+        }
       }
     }
 
