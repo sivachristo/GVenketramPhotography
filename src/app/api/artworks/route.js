@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { artworksData, updateArtworksState } from "@/data/artworks";
+import { artworksData } from "@/data/artworks";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-// Global in-memory storage array for current server process
-let currentArtworks = [...artworksData];
 
 const TABLE = "art_gallery";
 
@@ -211,11 +208,7 @@ export async function POST(request) {
       }
     }
 
-    currentArtworks = [newArtwork, ...currentArtworks];
-    updateArtworksState(currentArtworks);
-
-    revalidatePath("/art-gallery");
-    revalidatePath("/art-gallery/[id]");
+    revalidatePath("/art-gallery", "page");
     revalidatePath("/admin");
 
     return NextResponse.json({
@@ -241,8 +234,18 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Missing artwork ID for update" }, { status: 400 });
     }
 
-    const index = currentArtworks.findIndex((item) => item.id === id);
-    const existing = index !== -1 ? currentArtworks[index] : {};
+    let existing = {};
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data } = await supabase.from(TABLE).select("*").eq("id", id).single();
+        if (data) existing = mapDbRow(data);
+      } catch (err) {
+        console.warn("Supabase fetch single artwork notice:", err.message);
+      }
+    }
+    if (!existing.id) {
+      existing = artworksData.find((item) => item.id === id) || {};
+    }
 
     const updatedItem = {
       ...existing,
@@ -298,13 +301,6 @@ export async function PATCH(request) {
       }
     }
 
-    if (index !== -1) {
-      currentArtworks[index] = updatedItem;
-    } else {
-      currentArtworks = [updatedItem, ...currentArtworks];
-    }
-    updateArtworksState(currentArtworks);
-
     revalidatePath("/art-gallery");
     revalidatePath(`/art-gallery/${id}`);
     revalidatePath("/admin");
@@ -343,11 +339,14 @@ export async function DELETE(request) {
           .single();
 
         if (item?.image && item.image.includes("supabase.co/storage")) {
-          const filename = item.image.split("/portfolio-images/")[1]?.split("?")[0];
-          if (filename) {
-            await supabase.storage
-              .from("portfolio-images")
-              .remove([decodeURIComponent(filename)]);
+          for (const bucket of ["portfolio-images", "artworks"]) {
+            const part = item.image.split(`/${bucket}/`)[1]?.split("?")[0];
+            if (part) {
+              await supabase.storage
+                .from(bucket)
+                .remove([decodeURIComponent(part)]);
+              break;
+            }
           }
         }
 
@@ -359,9 +358,6 @@ export async function DELETE(request) {
         console.error("Supabase delete art_gallery error:", sbErr.message);
       }
     }
-
-    currentArtworks = currentArtworks.filter((item) => item.id !== id);
-    updateArtworksState(currentArtworks);
 
     revalidatePath("/art-gallery");
     revalidatePath("/admin");

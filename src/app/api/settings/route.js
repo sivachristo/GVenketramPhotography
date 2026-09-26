@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // In-memory / server cache fallback for settings
 let cachedSettings = {
@@ -10,11 +11,35 @@ let cachedSettings = {
   updatedAt: new Date().toISOString(),
 };
 
+const TABLE = "site_settings";
+
 export async function GET() {
   try {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from(TABLE)
+          .select("*")
+          .eq("id", 1)
+          .single();
+
+        if (!error && data && data.settings) {
+          cachedSettings = data.settings;
+          return NextResponse.json({
+            success: true,
+            settings: cachedSettings,
+            source: "supabase",
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase GET site_settings notice:", err.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       settings: cachedSettings,
+      source: "memory",
     });
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -49,6 +74,25 @@ export async function POST(request) {
       visibility: newVisibility,
       updatedAt: new Date().toISOString(),
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: sbErr } = await supabase.from(TABLE).upsert({
+          id: 1,
+          settings: cachedSettings,
+          updated_at: new Date().toISOString(),
+        });
+
+        if (sbErr) {
+          console.warn("Supabase upsert site_settings notice:", sbErr.message);
+        }
+      } catch (err) {
+        console.warn("Supabase upsert site_settings exception:", err.message);
+      }
+    }
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin");
 
     return NextResponse.json({
       success: true,

@@ -72,6 +72,10 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
       return new Promise((resolve) => {
         canvas.toBlob(
           (blob) => {
+            srcCanvas.width = 0;
+            srcCanvas.height = 0;
+            canvas.width = 0;
+            canvas.height = 0;
             resolve({
               blob: blob || file,
               width,
@@ -142,6 +146,8 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
 
       canvas.toBlob(
         (blob) => {
+          canvas.width = 0;
+          canvas.height = 0;
           if (!blob) {
             // Fallback if toBlob fails
             return resolve({

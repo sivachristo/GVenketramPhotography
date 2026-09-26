@@ -51,8 +51,8 @@ import {
   ArtGallerySkeletonGrid
 } from "@/components/admin/AdminSkeletons";
 
-const ADMIN_USERNAME = "g-venketram";
-const ADMIN_PASSWORD = "12345";
+const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME || "g-venketram";
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "12345";
 
 export default function AdminPage() {
   // ── Login Gate ────────────────────────────────────────────

@@ -106,8 +106,10 @@ export function CartProvider({ children }) {
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
+  // Client-side display total. Note: When integrating checkout/payment gateways,
+  // price MUST be re-verified server-side from Supabase/DB by artwork ID to prevent price tampering.
   const cartSubtotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
+    (acc, item) => acc + (Number(item.price) || 0) * item.quantity,
     0
   );
 

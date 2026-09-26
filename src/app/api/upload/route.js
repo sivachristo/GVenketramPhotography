@@ -55,45 +55,7 @@ async function processSingleFile(file) {
   // --- Compress to WebP first ---
   const { buffer, width, height, uniqueFilename } = await compressToWebP(file);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-  const supabaseUrlHost = supabaseUrl ? new URL(supabaseUrl).hostname : "NONE";
 
-  console.log("=== SUPABASE DIAGNOSTIC CHECK ===");
-  console.log("isSupabaseConfigured:", isSupabaseConfigured);
-  console.log("supabaseUrlHost:", supabaseUrlHost);
-  console.log("anonKey prefix (first 25 chars):", supabaseKey.slice(0, 25));
-  console.log("anonKey length:", supabaseKey.length);
-  console.log("anonKey looks like JWT:", supabaseKey.startsWith("eyJ"));
-  console.log("bucket:", "portfolio-images");
-  console.log("uniqueFilename:", uniqueFilename);
-  console.log("buffer size (bytes):", buffer.byteLength || buffer.length);
-  console.log("contentType:", "image/webp");
-
-  // --- Pre-flight connectivity check ---
-  if (isSupabaseConfigured && supabase) {
-    try {
-      console.log("=== PRE-FLIGHT: Testing raw fetch to Supabase Storage REST endpoint ===");
-      const testUrl = `${supabaseUrl}/storage/v1/bucket/portfolio-images`;
-      const preflightRes = await fetch(testUrl, {
-        method: "GET",
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-      console.log("PRE-FLIGHT status:", preflightRes.status);
-      const preflightText = await preflightRes.text();
-      console.log("PRE-FLIGHT response (first 300 chars):", preflightText.slice(0, 300));
-    } catch (preflightErr) {
-      console.error("PRE-FLIGHT FAILED — cannot reach Supabase Storage REST API");
-      console.error("preflightErr.name:", preflightErr.name);
-      console.error("preflightErr.message:", preflightErr.message);
-      console.error("preflightErr.cause:", preflightErr.cause);
-      console.error("preflightErr.cause?.code:", preflightErr.cause?.code);
-      console.error("preflightErr.cause?.message:", preflightErr.cause?.message);
-    }
-  }
 
   // 1. Supabase Storage upload (compressed WebP)
   if (isSupabaseConfigured && supabase) {

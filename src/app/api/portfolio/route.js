@@ -60,6 +60,16 @@ export async function GET() {
 }
 
 async function shiftDisplayOrders(categoryName, shiftAmount) {
+  try {
+    const { error: rpcErr } = await supabase.rpc("shift_display_orders", {
+      cat_name: categoryName,
+      shift_by: shiftAmount,
+    });
+    if (!rpcErr) return;
+  } catch (rpcEx) {
+    // Fall back if RPC function is not created in database
+  }
+
   const { data: images, error: fetchError } = await supabase
     .from("portfolio_images")
     .select("id, display_order")
