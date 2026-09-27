@@ -10,8 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 
 // Custom Render Image component: clean grid of photos, metadata shown as a premium hover overlay
-function CustomRenderImage(props, { photo, width, height }) {
-  const showCategoryTag = props.showCategoryTag !== false;
+function CustomRenderImage({ photo, width, height, showCategoryTag: showCategoryTagProp, ...props }) {
+  const showCategoryTag = showCategoryTagProp !== false;
 
   return (
     <div 
@@ -19,10 +19,10 @@ function CustomRenderImage(props, { photo, width, height }) {
       className="relative overflow-hidden rounded-lg group bg-[#faf8f5] border border-[#e6e2d8]/60 shadow-sm cursor-pointer aspect-auto"
     >
       <Image
-        src={photo.src}
-        alt={photo.alt || photo.title || ""}
-        width={width}
-        height={height}
+        src={photo?.src || ""}
+        alt={photo?.alt || photo?.title || ""}
+        width={width || 1200}
+        height={height || 800}
         sizes={props.sizes}
         style={{
           ...props.style,
@@ -36,14 +36,14 @@ function CustomRenderImage(props, { photo, width, height }) {
       <div className="absolute inset-0 bg-[#f5f2eb]/90 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6 pointer-events-none">
         {showCategoryTag && (
           <span className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-1 translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out">
-            {photo.category}
+            {photo?.category || ""}
           </span>
         )}
         <h3 className="text-base font-light tracking-wider text-[#1c1a17] uppercase translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out font-serif">
-          {photo.title}
+          {photo?.title || ""}
         </h3>
         <p className="text-xs text-neutral-600 mt-2 line-clamp-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out delay-75 leading-relaxed font-light">
-          {photo.description}
+          {photo?.description || ""}
         </p>
         <div className="flex items-center text-xs text-[#1c1a17] font-semibold uppercase tracking-widest mt-4 translate-y-5 group-hover:translate-y-0 transition-transform duration-500 ease-out delay-100">
           <span>View Image</span>

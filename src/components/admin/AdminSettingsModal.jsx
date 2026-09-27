@@ -10,6 +10,8 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -26,6 +28,28 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
       setError("Network error fetching storage stats.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMigrateToCloudinary = async () => {
+    if (!window.confirm("Move all remaining images from Supabase Storage to Cloudinary and update database links?")) {
+      return;
+    }
+    setMigrating(true);
+    setMigrationStatus(null);
+    try {
+      const res = await fetch("/api/admin/migrate-to-cloudinary", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMigrationStatus(`Successfully processed images! Migrated: ${data.stats.portfolioUploaded + data.stats.artUploaded}, Skipped: ${data.stats.portfolioSkipped + data.stats.artSkipped}`);
+        fetchStats();
+      } else {
+        setMigrationStatus(`Migration notice: ${data.error || "Failed to complete migration."}`);
+      }
+    } catch (err) {
+      setMigrationStatus("Error running migration: " + err.message);
+    } finally {
+      setMigrating(false);
     }
   };
 
@@ -132,7 +156,7 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                     <div className="space-y-2.5 pt-1">
                       <div>
                         <div className="flex justify-between text-[11px] font-medium text-neutral-600">
-                          <span>Free Credit Usage</span>
+                          <span>Bucket Usage</span>
                           <span className="font-bold text-[#1c1a17]">
                             {stats.cloudinary.creditsUsed} / {stats.cloudinary.creditsLimit} Credits ({stats.cloudinary.creditsPercent}%)
                           </span>
@@ -244,11 +268,10 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           Art Gallery
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${
-                            isArtGalleryEnabled
+                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${isArtGalleryEnabled
                               ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                               : "bg-neutral-200 text-neutral-600 border border-neutral-300"
-                          }`}
+                            }`}
                         >
                           {isArtGalleryEnabled ? "Visible" : "Disabled"}
                         </span>
@@ -264,16 +287,14 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                     role="switch"
                     aria-checked={isArtGalleryEnabled}
                     onClick={() => updateVisibility("artGallery", !isArtGalleryEnabled)}
-                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      isArtGalleryEnabled ? "bg-[#1c1a17]" : "bg-neutral-300"
-                    }`}
+                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isArtGalleryEnabled ? "bg-[#1c1a17]" : "bg-neutral-300"
+                      }`}
                     title="Toggle Art Gallery Visibility"
                   >
                     <span className="sr-only">Toggle Art Gallery</span>
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        isArtGalleryEnabled ? "translate-x-6" : "translate-x-0"
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isArtGalleryEnabled ? "translate-x-6" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -292,11 +313,10 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           Workshop
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${
-                            isWorkshopEnabled
+                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${isWorkshopEnabled
                               ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                               : "bg-neutral-200 text-neutral-600 border border-neutral-300"
-                          }`}
+                            }`}
                         >
                           {isWorkshopEnabled ? "Visible" : "Disabled"}
                         </span>
@@ -312,16 +332,14 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                     role="switch"
                     aria-checked={isWorkshopEnabled}
                     onClick={() => updateVisibility("workshop", !isWorkshopEnabled)}
-                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      isWorkshopEnabled ? "bg-[#1c1a17]" : "bg-neutral-300"
-                    }`}
+                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isWorkshopEnabled ? "bg-[#1c1a17]" : "bg-neutral-300"
+                      }`}
                     title="Toggle Workshop Visibility"
                   >
                     <span className="sr-only">Toggle Workshop</span>
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        isWorkshopEnabled ? "translate-x-6" : "translate-x-0"
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isWorkshopEnabled ? "translate-x-6" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
