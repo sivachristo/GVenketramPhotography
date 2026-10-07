@@ -52,10 +52,6 @@ import {
   ArtGallerySkeletonGrid
 } from "@/components/admin/AdminSkeletons";
 
-const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-
-
 export default function AdminPage() {
   // ── Login Gate ────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -71,19 +67,33 @@ export default function AdminPage() {
     }
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError("");
-    setTimeout(() => {
-      if (loginUsername.trim() === ADMIN_USERNAME && loginPassword === ADMIN_PASSWORD) {
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         sessionStorage.setItem("gvr_admin_auth", "true");
         setIsAuthenticated(true);
       } else {
-        setLoginError("Invalid username or password.");
+        setLoginError(data.error || "Invalid username or password.");
       }
+    } catch (err) {
+      setLoginError("Login failed. Please check your network connection.");
+    } finally {
       setIsLoggingIn(false);
-    }, 400);
+    }
   };
 
   const handleLogout = () => {
