@@ -44,3 +44,18 @@ ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT USING (bucket_id = 'portfolio-images');
 CREATE POLICY "Public Upload Access" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'portfolio-images');
 CREATE POLICY "Public Delete Access" ON storage.objects FOR DELETE USING (bucket_id = 'portfolio-images');
+
+-- 7. Create main_images table (Homepage Slideshow)
+CREATE TABLE IF NOT EXISTS main_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  alt TEXT,
+  src TEXT NOT NULL,
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE main_images ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read access on main_images" ON main_images FOR SELECT USING (true);
+CREATE POLICY "Allow public insert/update/delete on main_images" ON main_images FOR ALL USING (true);

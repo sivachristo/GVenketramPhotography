@@ -3,6 +3,7 @@ import path from "path";
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { verifySupabaseQuota } from "@/lib/storageGuard";
 import { formatTitleFromFilename } from "@/utils/formatTitle";
 import sharp from "sharp";
 
@@ -72,6 +73,14 @@ async function processSingleFile(file) {
   // 2. Supabase Storage upload (fallback if Cloudinary is not configured)
   if (isSupabaseConfigured && supabase) {
     try {
+      // Enforce strict 900 MB safety limit
+      const quota = await verifySupabaseQuota(buffer.length);
+      if (!quota.allowed) {
+        throw new Error(
+          `Supabase Storage 900 MB safety limit reached (${quota.currentMB} MB / 900 MB). Upload diverted.`
+        );
+      }
+
       const { data: uploadResult, error: uploadErr } = await supabase.storage
         .from("portfolio-images")
         .upload(uniqueFilename, buffer, {

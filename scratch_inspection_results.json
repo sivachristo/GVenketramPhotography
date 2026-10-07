@@ -1,0 +1,23 @@
+{
+  "totalStorageMB": 0,
+  "totalStorageGB": 0,
+  "fileCount": 0,
+  "mimeTypeBreakdown": {},
+  "folderBreakdown": {},
+  "top25Files": [],
+  "orphanCount": 0,
+  "orphanStorageMB": 0,
+  "activeCount": 0,
+  "activeStorageMB": 0,
+  "orphanedStorageFiles": [],
+  "activeStorageFiles": [],
+  "dbCounts": {
+    "portfolio": 605,
+    "gallery": 24,
+    "categories": 9,
+    "cloudinaryUrls": 629,
+    "supabaseUrls": 0,
+    "localUrls": 0,
+    "otherUrls": 0
+  }
+}

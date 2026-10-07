@@ -153,15 +153,15 @@ export default function Navbar() {
               </button>
             </div>
           ) : isAdminAuth ? (
-            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center space-x-4">
-              {/* Settings Button Next to Sign Out */}
+            <div className="absolute right-4 sm:right-6 lg:right-8 flex items-center gap-1 sm:gap-4">
+              {/* Settings Button */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-semibold transition-colors cursor-pointer px-2.5 py-1 rounded hover:bg-neutral-200/50"
+                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-semibold transition-colors cursor-pointer px-2 py-1 rounded hover:bg-neutral-200/50"
                 title="Site Settings & Visibility"
               >
                 <Sliders size={14} />
-                <span>Settings</span>
+                <span className="hidden sm:inline">Settings</span>
               </button>
 
               <div className="h-4 w-px bg-[#d8d3c5]" />
@@ -174,11 +174,11 @@ export default function Navbar() {
                     window.location.reload();
                   }
                 }}
-                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-red-700 font-semibold transition-colors cursor-pointer px-2.5 py-1 rounded hover:bg-red-100/50"
+                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-red-700 font-semibold transition-colors cursor-pointer px-2 py-1 rounded hover:bg-red-100/50"
                 title="Sign Out of Admin"
               >
                 <LogOut size={15} />
-                <span>Sign Out</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           ) : null}

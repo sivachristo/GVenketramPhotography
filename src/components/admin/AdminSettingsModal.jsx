@@ -199,7 +199,7 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           Supabase
                         </div>
                         <div className="text-[10px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 inline-block">
-                          Database & Storage (1 GB)
+                          Database & Storage (900 MB Cap)
                         </div>
                       </div>
                     </div>
@@ -209,17 +209,26 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                     <div className="space-y-2.5 pt-1">
                       <div>
                         <div className="flex justify-between text-[11px] font-medium text-neutral-600">
-                          <span>Bucket Usage</span>
-                          <span className="font-bold text-[#1c1a17]">
-                            {stats.supabase.storageMB} MB / 1,000 MB ({((stats.supabase.storageMB / 1000) * 100).toFixed(1)}%)
+                          <span>Bucket Usage (900 MB Safety Limit)</span>
+                          <span className={`font-bold ${stats.supabase.storageMB >= 900 ? "text-red-600" : stats.supabase.storageMB >= 750 ? "text-amber-600" : "text-[#1c1a17]"}`}>
+                            {stats.supabase.storageMB} MB / 900 MB ({((stats.supabase.storageMB / 900) * 100).toFixed(1)}%)
                           </span>
                         </div>
                         <div className="w-full bg-neutral-100 rounded-full h-2 mt-1 overflow-hidden">
                           <div
-                            className="bg-emerald-700 h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, ((stats.supabase.storageMB / 1000) * 100)).toFixed(1)}%` }}
+                            className={`h-2 rounded-full transition-all duration-500 ${
+                              stats.supabase.storageMB >= 900
+                                ? "bg-red-600"
+                                : stats.supabase.storageMB >= 750
+                                ? "bg-amber-500"
+                                : "bg-emerald-700"
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(2, (stats.supabase.storageMB / 900) * 100)).toFixed(1)}%` }}
                           />
                         </div>
+                        <p className="text-[10px] text-neutral-400 mt-1">
+                          Hard limit at 900 MB prevents crossing 1 GB Free Tier quota limit.
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-neutral-100">

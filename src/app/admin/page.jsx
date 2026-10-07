@@ -45,14 +45,16 @@ import { useSettings } from "@/context/SettingsContext";
 import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
 import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal";
 import ArtworkModal from "@/components/admin/ArtworkModal";
+import MainImagesManager from "@/components/admin/MainImagesManager";
 import {
   PortfolioCategoryTabsSkeleton,
   PortfolioSkeletonGrid,
   ArtGallerySkeletonGrid
 } from "@/components/admin/AdminSkeletons";
 
-const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME || "g-venketram";
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "12345";
+const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
 
 export default function AdminPage() {
   // ── Login Gate ────────────────────────────────────────────
@@ -294,13 +296,13 @@ export default function AdminPage() {
         return prev.map((cat) =>
           cat.category === newCategory
             ? {
-                ...cat,
-                images: cat.images.map((i) =>
-                  (updatedImage.id && i.id === updatedImage.id) || i.src === updatedImage.src
-                    ? updatedImage
-                    : i
-                ),
-              }
+              ...cat,
+              images: cat.images.map((i) =>
+                (updatedImage.id && i.id === updatedImage.id) || i.src === updatedImage.src
+                  ? updatedImage
+                  : i
+              ),
+            }
             : cat
         );
       } else {
@@ -874,8 +876,8 @@ export default function AdminPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-xl flex items-center gap-3 text-xs uppercase tracking-widest font-semibold border ${toastMessage.type === "error"
-                ? "bg-red-900 text-white border-red-700"
-                : "bg-[#1c1a17] text-[#f5f2eb] border-neutral-700"
+              ? "bg-red-900 text-white border-red-700"
+              : "bg-[#1c1a17] text-[#f5f2eb] border-neutral-700"
               }`}
           >
             {toastMessage.type === "error" ? (
@@ -898,35 +900,46 @@ export default function AdminPage() {
             </h1>
           </div>
 
-          {/* Tab Switcher: Portfolio vs Art Gallery vs Workshop */}
-          <div className="flex items-center space-x-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg">
-            <button
-              onClick={() => setMainTab("portfolio")}
-              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${mainTab === "portfolio"
+          {/* Tab Switcher — scrollable on mobile, auto width on desktop */}
+          <div className="w-full sm:w-auto overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg w-max">
+              <button
+                onClick={() => setMainTab("portfolio")}
+                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "portfolio"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
-                }`}
-            >
-              Portfolio Collections
-            </button>
-            <button
-              onClick={() => setMainTab("art-gallery")}
-              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${mainTab === "art-gallery"
+                  }`}
+              >
+                Portfolio Collections
+              </button>
+              <button
+                onClick={() => setMainTab("art-gallery")}
+                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "art-gallery"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
-                }`}
-            >
-              Art Gallery ({artworksList.length})
-            </button>
-            <button
-              onClick={() => setMainTab("workshop")}
-              className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer ${mainTab === "workshop"
+                  }`}
+              >
+                Art Gallery ({artworksList.length})
+              </button>
+              <button
+                onClick={() => setMainTab("workshop")}
+                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "workshop"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
-                }`}
-            >
-              Workshops & Registrations ({registrationsList.length})
-            </button>
+                  }`}
+              >
+                Workshops & Registrations ({registrationsList.length})
+              </button>
+              <button
+                onClick={() => setMainTab("main-images")}
+                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "main-images"
+                  ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
+                  : "text-neutral-600 hover:text-black"
+                  }`}
+              >
+                Main Image
+              </button>
+            </div>
           </div>
 
           {/* Action Header Buttons */}
@@ -937,15 +950,15 @@ export default function AdminPage() {
                 className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
               >
                 <Plus size={15} />
-                Add Portfolio Image
+                Add  Image
               </button>
 
               <button
                 onClick={handleSaveChanges}
                 disabled={isSaving}
                 className={`px-5 py-2 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 font-medium cursor-pointer shadow-sm ${hasUnsavedChanges
-                    ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
-                    : "bg-neutral-800 text-neutral-300 hover:bg-black"
+                  ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
+                  : "bg-neutral-800 text-neutral-300 hover:bg-black"
                   }`}
               >
                 <Save size={15} />
@@ -987,7 +1000,10 @@ export default function AdminPage() {
       {/* Main Admin Workspace */}
       <main className="w-full px-4 sm:px-8 py-8">
 
-        {mainTab === "art-gallery" ? (
+        {mainTab === "main-images" ? (
+          /* MAIN IMAGES (HOMEPAGE HERO SLIDESHOW) VIEW */
+          <MainImagesManager />
+        ) : mainTab === "art-gallery" ? (
           /* ART GALLERY MANAGEMENT VIEW */
           <div className="space-y-8">
             {/* Toolbar for Art Gallery */}
@@ -1010,8 +1026,8 @@ export default function AdminPage() {
                       key={cat}
                       onClick={() => setArtCategoryFilter(cat)}
                       className={`px-3 py-1.5 text-[10px] uppercase tracking-wider rounded font-medium transition-colors whitespace-nowrap cursor-pointer ${artCategoryFilter === cat
-                          ? "bg-[#1c1a17] text-white"
-                          : "bg-white border border-[#e6e2d8] text-neutral-600 hover:text-black"
+                        ? "bg-[#1c1a17] text-white"
+                        : "bg-white border border-[#e6e2d8] text-neutral-600 hover:text-black"
                         }`}
                     >
                       {cat}
@@ -1300,8 +1316,8 @@ export default function AdminPage() {
                           {/* Payment Status */}
                           <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${reg.paymentStatus === "SUCCESSFUL"
-                                ? "bg-green-100 text-green-800 border border-green-300"
-                                : "bg-amber-100 text-amber-800 border border-amber-300"
+                              ? "bg-green-100 text-green-800 border border-green-300"
+                              : "bg-amber-100 text-amber-800 border border-amber-300"
                               }`}>
                               {reg.paymentStatus}
                             </span>
@@ -1312,8 +1328,8 @@ export default function AdminPage() {
                             <button
                               onClick={() => handleToggleCheckIn(reg.tokenNumber)}
                               className={`px-3 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer ${reg.checkedIn
-                                  ? "bg-emerald-700 text-white shadow-xs"
-                                  : "bg-[#E2DDD3] text-neutral-600 hover:bg-[#d8d3c5]"
+                                ? "bg-emerald-700 text-white shadow-xs"
+                                : "bg-[#E2DDD3] text-neutral-600 hover:bg-[#d8d3c5]"
                                 }`}
                             >
                               {reg.checkedIn ? "✓ Checked In" : "Pending"}
@@ -1361,8 +1377,8 @@ export default function AdminPage() {
                     <button
                       onClick={() => setActiveCategory("All")}
                       className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded transition-all cursor-pointer whitespace-nowrap ${activeCategory === "All"
-                          ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
-                          : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
+                        ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
+                        : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
                         }`}
                     >
                       All Tabs ({allImagesWithCategory.length})
@@ -1378,8 +1394,8 @@ export default function AdminPage() {
                           key={catName}
                           onClick={() => setActiveCategory(catName)}
                           className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${isActive
-                              ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
-                              : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
+                            ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
+                            : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
                             }`}
                         >
                           <span>{catName}</span>
@@ -1573,8 +1589,8 @@ export default function AdminPage() {
                                 onClick={() => handleSetPosition(img.category, img.src, 1, img.id)}
                                 disabled={isFirst}
                                 className={`px-1.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded border ${isFirst
-                                    ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
-                                    : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                                  ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                  : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                                   }`}
                                 title="Move directly to Position #1 (Top)"
                               >
@@ -1585,8 +1601,8 @@ export default function AdminPage() {
                                 onClick={() => handleReorder(img.category, img.src, "up")}
                                 disabled={isFirst}
                                 className={`p-1.5 rounded border ${isFirst
-                                    ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
-                                    : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                                  ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                  : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                                   }`}
                                 title="Move Up 1 spot"
                               >
@@ -1597,8 +1613,8 @@ export default function AdminPage() {
                                 onClick={() => handleReorder(img.category, img.src, "down")}
                                 disabled={isLast}
                                 className={`p-1.5 rounded border ${isLast
-                                    ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
-                                    : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                                  ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                  : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                                   }`}
                                 title="Move Down 1 spot"
                               >
@@ -1609,8 +1625,8 @@ export default function AdminPage() {
                                 onClick={() => handleSetPosition(img.category, img.src, catObj ? catObj.images.length : 1, img.id)}
                                 disabled={isLast}
                                 className={`px-1.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded border ${isLast
-                                    ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
-                                    : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
+                                  ? "opacity-30 border-neutral-200 cursor-not-allowed text-neutral-400"
+                                  : "border-[#e6e2d8] bg-white hover:bg-neutral-100 text-neutral-700 cursor-pointer"
                                   }`}
                                 title="Move directly to last position (Bottom)"
                               >

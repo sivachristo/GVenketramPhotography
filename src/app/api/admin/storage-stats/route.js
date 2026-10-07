@@ -77,12 +77,19 @@ export async function GET() {
         .from("categories")
         .select("*", { count: "exact", head: true });
 
+      const storageMB = +(totalBytes / (1024 * 1024)).toFixed(2);
+      const safetyLimitMB = 900;
+      const safetyLimitPercent = +((storageMB / safetyLimitMB) * 100).toFixed(1);
+
       supabaseStats = {
         configured: true,
         storageBytes: totalBytes,
-        storageMB: +(totalBytes / (1024 * 1024)).toFixed(2),
+        storageMB,
         storageGB: +(totalBytes / (1024 * 1024 * 1024)).toFixed(3),
         storageLimitMB: 1000, // 1 GB free tier limit
+        safetyLimitMB, // 900 MB hard safety limit
+        safetyLimitPercent,
+        safetyLimitReached: storageMB >= safetyLimitMB,
         fileCount: files.length,
         portfolioRows: portfolioCount || 0,
         galleryRows: galleryCount || 0,

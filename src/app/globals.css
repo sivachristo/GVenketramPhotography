@@ -46,6 +46,18 @@ body {
   background: #c3bcad;
 }
 
+/* Hide scrollbar only while viewing the hero section */
+html.hero-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  background: transparent;
+}
+
+html.hero-scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* Custom Selection Styles matching warm palette */
 ::selection {
   background-color: #1c1a17;
