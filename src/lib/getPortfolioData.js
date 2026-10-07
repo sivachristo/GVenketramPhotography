@@ -7,7 +7,7 @@ export const DEFAULT_CATEGORIES = [
   "Art",
   "Food",
   "Movies",
-  "Travel",
+  "Bare",
   "Calendar",
   "Personalities",
 ];

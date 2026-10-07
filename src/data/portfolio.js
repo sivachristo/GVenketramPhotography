@@ -5,7 +5,7 @@ export const PORTFOLIO_CATEGORIES = [
   "Art",
   "Food",
   "Movies",
-  "Travel",
+  "Bare",
   "Calendar",
   "Personalities"
 ];

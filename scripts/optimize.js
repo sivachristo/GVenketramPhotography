@@ -125,7 +125,7 @@ const STATIC_CATEGORIES_DATA = [
     ]
   },
   {
-    category: "Travel",
+    category: "Bare",
     images: [
       {
         src: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80",
@@ -364,7 +364,7 @@ async function processImages() {
     "Art",
     "Food",
     "Movies",
-    "Travel",
+    "Bare",
     "Calendar",
     "Personalities"
   ];
