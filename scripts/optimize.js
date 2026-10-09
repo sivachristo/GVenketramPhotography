@@ -339,7 +339,7 @@ async function processImages() {
           width: processedMeta.width || 1200,
           height: processedMeta.height || 1600,
           title: rawTitle,
-          description: `Editorial photography for ${item.categoryName} by G Venket Ram.`,
+          description: "",
         });
       } catch (err) {
         console.error(`  Failed to process ${file}:`, err.message);

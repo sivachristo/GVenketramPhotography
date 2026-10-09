@@ -167,9 +167,7 @@ export default function AddPortfolioImageModal({
           category: targetCategory,
           width: uf.width || 1600,
           height: uf.height || 1200,
-          description:
-            formData.description ||
-            `Editorial photography for ${targetCategory} by G Venket Ram.`,
+          description: formData.description || "",
         }));
 
         const portfolioRes = await fetch("/api/portfolio", {
@@ -272,9 +270,7 @@ export default function AddPortfolioImageModal({
       width: parseInt(formData.width) || 1600,
       height: parseInt(formData.height) || 1200,
       title: formData.title || "Untitled Artwork",
-      description:
-        formData.description ||
-        `Editorial photography for ${targetCategory} by G Venket Ram.`,
+      description: formData.description || "",
     };
 
     try {
@@ -685,13 +681,15 @@ export default function AddPortfolioImageModal({
 
               {/* Upload Status & Animated Progress Bar */}
               {isUploading && (
-                <div className="p-3.5 bg-[#e6e2d8]/70 border border-[#d8d3c5] rounded-lg text-xs space-y-2.5 shadow-xs">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#1c1a17]">
-                    <div className="flex items-center gap-2">
+                <div className="p-3.5 bg-[#e6e2d8]/70 border border-[#d8d3c5] rounded-lg text-xs space-y-2.5 shadow-xs min-w-0">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#1c1a17] min-w-0 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-ping shrink-0"></span>
-                      <span className="truncate">{uploadStatusText || "Uploading files..."}</span>
+                      <span className="truncate block min-w-0" title={uploadStatusText || "Uploading files..."}>
+                        {uploadStatusText || "Uploading files..."}
+                      </span>
                     </div>
-                    <span className="font-mono text-amber-900 font-bold ml-2 shrink-0">{uploadProgress}%</span>
+                    <span className="font-mono text-amber-900 font-bold shrink-0">{uploadProgress}%</span>
                   </div>
 
                   {/* Animated Progress Bar Track */}
@@ -705,9 +703,9 @@ export default function AddPortfolioImageModal({
                   </div>
 
                   {isLargeUpload && (
-                    <p className="text-[11px] text-amber-800/90 italic flex items-center gap-1.5 pt-0.5 border-t border-[#d8d3c5]/50">
+                    <p className="text-[11px] text-amber-800/90 italic flex items-center gap-1.5 pt-0.5 border-t border-[#d8d3c5]/50 min-w-0">
                       <Coffee size={13} className="shrink-0 text-amber-700" />
-                      <span>Sipping coffee... uploading high-res images</span>
+                      <span className="truncate block min-w-0">Sipping coffee... uploading high-res images</span>
                     </p>
                   )}
                 </div>

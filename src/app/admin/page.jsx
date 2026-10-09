@@ -901,21 +901,22 @@ export default function AdminPage() {
       </AnimatePresence>
 
       {/* Admin Top Header Navigation */}
-      <header className="sticky top-0 z-40 bg-[#E2DDD3] border-b border-[#d8d3c5] shadow-xs px-4 sm:px-8 py-4">
-        <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#E2DDD3] border-b border-[#d8d3c5] shadow-xs px-4 sm:px-8 py-3.5">
+        <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-4">
 
-          <div className="flex items-center gap-2">
+          {/* Left: Brand Title */}
+          <div className="flex items-center gap-2 justify-center lg:justify-start shrink-0 lg:min-w-[220px]">
             <h1 className="text-lg font-serif uppercase tracking-widest text-[#1c1a17] font-semibold flex items-center gap-2">
               <Layers size={18} /> Admin Dashboard
             </h1>
           </div>
 
-          {/* Tab Switcher — scrollable on mobile, auto width on desktop */}
-          <div className="w-full sm:w-auto overflow-x-auto scrollbar-none">
-            <div className="flex items-center gap-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg w-max">
+          {/* Center: Tab Switcher (Always centered, never cut off) */}
+          <div className="flex justify-center items-center flex-1 w-full lg:w-auto overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 bg-[#f5f2eb] border border-[#d8d3c5] p-1 rounded-lg shrink-0">
               <button
                 onClick={() => setMainTab("portfolio")}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "portfolio"
+                className={`px-3.5 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "portfolio"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
                   }`}
@@ -924,7 +925,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setMainTab("art-gallery")}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "art-gallery"
+                className={`px-3.5 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "art-gallery"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
                   }`}
@@ -933,7 +934,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setMainTab("workshop")}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "workshop"
+                className={`px-3.5 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "workshop"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
                   }`}
@@ -942,7 +943,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setMainTab("main-images")}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "main-images"
+                className={`px-3.5 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "main-images"
                   ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
                   : "text-neutral-600 hover:text-black"
                   }`}
@@ -952,31 +953,33 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Action Header Buttons */}
-          {mainTab === "portfolio" ? (
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
-              >
-                <Plus size={15} />
-                Add  Image
-              </button>
+          {/* Right: Action Header Buttons (with balanced min-width so center stays true) */}
+          <div className="flex items-center gap-3 justify-center lg:justify-end shrink-0 lg:min-w-[220px]">
+            {mainTab === "portfolio" && (
+              <>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2 bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
+                >
+                  <Plus size={15} />
+                  Add Image
+                </button>
 
-              <button
-                onClick={handleSaveChanges}
-                disabled={isSaving}
-                className={`px-5 py-2 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 font-medium cursor-pointer shadow-sm ${hasUnsavedChanges
-                  ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
-                  : "bg-neutral-800 text-neutral-300 hover:bg-black"
-                  }`}
-              >
-                <Save size={15} />
-                {isSaving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          ) : mainTab === "art-gallery" ? (
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={isSaving}
+                  className={`px-5 py-2 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 font-medium cursor-pointer shadow-sm ${hasUnsavedChanges
+                    ? "bg-amber-700 text-white hover:bg-amber-800 animate-pulse"
+                    : "bg-neutral-800 text-neutral-300 hover:bg-black"
+                    }`}
+                >
+                  <Save size={15} />
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </>
+            )}
+
+            {mainTab === "art-gallery" && (
               <button
                 onClick={handleOpenCreateArtworkModal}
                 className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
@@ -984,25 +987,27 @@ export default function AdminPage() {
                 <Plus size={15} />
                 Add Artwork Item
               </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-              <button
-                onClick={() => setIsEditWorkshopModalOpen(true)}
-                className="px-4 py-2 bg-[#E2DDD3] text-[#1c1a17] border border-[#d8d3c5] hover:bg-neutral-200 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
-              >
-                <Pencil size={15} />
-                Masterclass Settings
-              </button>
-              <button
-                onClick={() => setIsAddRegModalOpen(true)}
-                className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
-              >
-                <UserPlus size={15} />
-                New Registration
-              </button>
-            </div>
-          )}
+            )}
+
+            {mainTab === "workshop" && (
+              <>
+                <button
+                  onClick={() => setIsEditWorkshopModalOpen(true)}
+                  className="px-4 py-2 bg-[#E2DDD3] text-[#1c1a17] border border-[#d8d3c5] hover:bg-neutral-200 text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium"
+                >
+                  <Pencil size={15} />
+                  Masterclass Settings
+                </button>
+                <button
+                  onClick={() => setIsAddRegModalOpen(true)}
+                  className="px-4 py-2 bg-[#A97C5B] text-white hover:bg-[#1c1a17] text-xs uppercase tracking-widest rounded transition-all flex items-center gap-2 cursor-pointer font-medium shadow-sm"
+                >
+                  <UserPlus size={15} />
+                  New Registration
+                </button>
+              </>
+            )}
+          </div>
 
         </div>
       </header>

@@ -262,7 +262,7 @@ export async function PATCH(request) {
           width: img.width || 1600,
           height: img.height || 1200,
           title: img.title || "Untitled",
-          description: img.description || `Editorial photography for ${targetCat} by G Venket Ram.`,
+          description: img.description || "",
           display_order: idx + 1,
         }));
 

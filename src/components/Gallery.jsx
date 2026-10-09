@@ -42,9 +42,11 @@ function CustomRenderImage({ photo, width, height, showCategoryTag: showCategory
         <h3 className="text-base font-light tracking-wider text-[#1c1a17] uppercase translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out font-serif">
           {photo?.title || ""}
         </h3>
-        <p className="text-xs text-neutral-600 mt-2 line-clamp-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out delay-75 leading-relaxed font-light">
-          {photo?.description || ""}
-        </p>
+        {photo?.description && photo.description.trim() !== "" && (
+          <p className="text-xs text-neutral-600 mt-2 line-clamp-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 ease-out delay-75 leading-relaxed font-light">
+            {photo.description}
+          </p>
+        )}
         <div className="flex items-center text-xs text-[#1c1a17] font-semibold uppercase tracking-widest mt-4 translate-y-5 group-hover:translate-y-0 transition-transform duration-500 ease-out delay-100">
           <span>View Image</span>
           <ChevronRight size={14} className="ml-1" />
