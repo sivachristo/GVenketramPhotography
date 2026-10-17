@@ -5,7 +5,7 @@
     "src": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=2000&q=80",
     "alt": "High Fashion Portrait",
     "display_order": 1,
-    "is_active": true
+    "is_active": false
   },
   {
     "id": "main-002",
@@ -13,7 +13,7 @@
     "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=2000&q=80",
     "alt": "Editorial Fashion Photography",
     "display_order": 2,
-    "is_active": true
+    "is_active": false
   },
   {
     "id": "main-003",

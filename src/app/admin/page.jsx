@@ -17,6 +17,7 @@ import {
   AlertCircle,
   X,
   Layers,
+  Sparkles,
   Image as ImageIcon,
   Eye,
   ExternalLink,
@@ -46,6 +47,7 @@ import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
 import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal";
 import ArtworkModal from "@/components/admin/ArtworkModal";
 import MainImagesManager from "@/components/admin/MainImagesManager";
+import AboutSectionManager from "@/components/admin/AboutSectionManager";
 import {
   PortfolioCategoryTabsSkeleton,
   PortfolioSkeletonGrid,
@@ -85,6 +87,7 @@ export default function AdminPage() {
 
       if (res.ok && data.success) {
         sessionStorage.setItem("gvr_admin_auth", "true");
+        window.dispatchEvent(new Event("admin-auth-change"));
         setIsAuthenticated(true);
       } else {
         setLoginError(data.error || "Invalid username or password.");
@@ -98,6 +101,7 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     sessionStorage.removeItem("gvr_admin_auth");
+    window.dispatchEvent(new Event("admin-auth-change"));
     setIsAuthenticated(false);
     setLoginUsername("");
     setLoginPassword("");
@@ -130,6 +134,9 @@ export default function AdminPage() {
 
   // Main Admin Dashboard Tab: 'portfolio' | 'art-gallery' | 'workshop'
   const [mainTab, setMainTab] = useState("portfolio");
+
+  // Portfolio Collections Sub-Scope: 'gallery' | 'main-images' | 'about'
+  const [portfolioSubTab, setPortfolioSubTab] = useState("gallery");
 
   // Art Gallery State
   const [artworksList, setArtworksList] = useState([]);
@@ -781,7 +788,7 @@ export default function AdminPage() {
   // ── Login screen ─────────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#1c1a17] flex items-center justify-center p-4">
+      <div className="min-h-screen flex-1 w-full bg-[#1c1a17] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -941,21 +948,12 @@ export default function AdminPage() {
               >
                 Workshops & Registrations ({registrationsList.length})
               </button>
-              <button
-                onClick={() => setMainTab("main-images")}
-                className={`px-3.5 py-1.5 text-xs uppercase tracking-wider rounded font-medium transition-all cursor-pointer whitespace-nowrap ${mainTab === "main-images"
-                  ? "bg-[#1c1a17] text-[#f5f2eb] shadow-xs font-semibold"
-                  : "text-neutral-600 hover:text-black"
-                  }`}
-              >
-                Main Image
-              </button>
             </div>
           </div>
 
           {/* Right: Action Header Buttons (with balanced min-width so center stays true) */}
           <div className="flex items-center gap-3 justify-center lg:justify-end shrink-0 lg:min-w-[220px]">
-            {mainTab === "portfolio" && (
+            {mainTab === "portfolio" && portfolioSubTab === "gallery" && (
               <>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
@@ -1015,10 +1013,7 @@ export default function AdminPage() {
       {/* Main Admin Workspace */}
       <main className="w-full px-4 sm:px-8 py-8">
 
-        {mainTab === "main-images" ? (
-          /* MAIN IMAGES (HOMEPAGE HERO SLIDESHOW) VIEW */
-          <MainImagesManager />
-        ) : mainTab === "art-gallery" ? (
+        {mainTab === "art-gallery" ? (
           /* ART GALLERY MANAGEMENT VIEW */
           <div className="space-y-8">
             {/* Toolbar for Art Gallery */}
@@ -1379,9 +1374,78 @@ export default function AdminPage() {
           </div>
         ) : (
           /* PORTFOLIO MANAGEMENT VIEW */
-          <>
-            {/* Workspace Toolbar: Search & Tab Stats */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
+          <div className="space-y-6">
+            {/* Portfolio Sub-Navigation Bar (Segmented Scope Control) */}
+            <div className="bg-[#faf8f5] p-2.5 rounded-xl border border-[#e6e2d8] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 p-1 bg-[#f0ece1] rounded-lg w-full sm:w-auto overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setPortfolioSubTab("gallery")}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wider rounded-md font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    portfolioSubTab === "gallery"
+                      ? "bg-[#1c1a17] text-[#f5f2eb] shadow-sm"
+                      : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  }`}
+                >
+                  <ImageIcon size={14} />
+                  <span>Photo Collections</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      portfolioSubTab === "gallery"
+                        ? "bg-white/20 text-white"
+                        : "bg-neutral-300 text-neutral-700"
+                    }`}
+                  >
+                    {allImagesWithCategory.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPortfolioSubTab("main-images")}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wider rounded-md font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    portfolioSubTab === "main-images"
+                      ? "bg-[#1c1a17] text-[#f5f2eb] shadow-sm"
+                      : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  }`}
+                >
+                  <Sparkles size={14} />
+                  <span>Main Page Hero</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPortfolioSubTab("about")}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wider rounded-md font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    portfolioSubTab === "about"
+                      ? "bg-[#1c1a17] text-[#f5f2eb] shadow-sm"
+                      : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  }`}
+                >
+                  <User size={14} />
+                  <span>About Section</span>
+                </button>
+              </div>
+
+              {/* Sub-tab descriptor info */}
+              <div className="text-right hidden lg:block pr-2">
+                <span className="text-[11px] text-neutral-500 font-light">
+                  {portfolioSubTab === "gallery" && "Manage categorized portfolio photos, display order, and tags"}
+                  {portfolioSubTab === "main-images" && "Manage homepage hero background slideshow images"}
+                  {portfolioSubTab === "about" && "Manage artist profile, bio narrative, quote, portrait, and publications"}
+                </span>
+              </div>
+            </div>
+
+            {/* Sub-Tab Content Views */}
+            {portfolioSubTab === "main-images" ? (
+              <MainImagesManager />
+            ) : portfolioSubTab === "about" ? (
+              <AboutSectionManager />
+            ) : (
+              <div>
+                {/* Workspace Toolbar: Search & Tab Stats */}
+                <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e6e2d8] pb-6">
 
               {/* Category Tabs Filter */}
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
@@ -1669,7 +1733,9 @@ export default function AdminPage() {
                 </button>
               </div>
             )}
-          </>
+              </div>
+            )}
+          </div>
         )}
       </main>
 

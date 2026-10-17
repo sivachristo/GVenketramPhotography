@@ -24,7 +24,13 @@ export default function Navbar() {
       };
       checkAuth();
       const interval = setInterval(checkAuth, 300);
-      return () => clearInterval(interval);
+      window.addEventListener("admin-auth-change", checkAuth);
+      window.addEventListener("storage", checkAuth);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("admin-auth-change", checkAuth);
+        window.removeEventListener("storage", checkAuth);
+      };
     }
   }, [pathname]);
 
@@ -78,6 +84,11 @@ export default function Navbar() {
   };
 
   const isAdmin = pathname?.toLowerCase().startsWith("/admin");
+
+  // In admin login screen (not authenticated), do not show navbar
+  if (isAdmin && !isAdminAuth) {
+    return null;
+  }
 
   return (
     <>
@@ -171,6 +182,7 @@ export default function Navbar() {
                 onClick={() => {
                   if (typeof window !== "undefined") {
                     sessionStorage.removeItem("gvr_admin_auth");
+                    window.dispatchEvent(new Event("admin-auth-change"));
                     window.location.reload();
                   }
                 }}

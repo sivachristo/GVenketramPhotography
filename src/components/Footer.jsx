@@ -1,11 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Heart } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function Footer() {
+  const pathname = usePathname();
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
   const { isArtGalleryEnabled, isWorkshopEnabled } = useSettings();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const checkAuth = () => {
+        setIsAdminAuth(sessionStorage.getItem("gvr_admin_auth") === "true");
+      };
+      checkAuth();
+      const interval = setInterval(checkAuth, 300);
+      window.addEventListener("admin-auth-change", checkAuth);
+      window.addEventListener("storage", checkAuth);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("admin-auth-change", checkAuth);
+        window.removeEventListener("storage", checkAuth);
+      };
+    }
+  }, [pathname]);
+
+  const isAdmin = pathname?.toLowerCase().startsWith("/admin");
+
+  // In admin login screen (not authenticated), do not show footer
+  if (isAdmin && !isAdminAuth) {
+    return null;
+  }
 
   return (
     <footer className="w-full border-t border-[#d8d3c5] bg-[#E2DDD3] text-neutral-500 py-12 mt-auto">
