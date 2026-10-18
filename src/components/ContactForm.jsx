@@ -5,7 +5,12 @@ import emailjs from "@emailjs/browser";
 import { Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function ContactForm() {
+export default function ContactForm({
+  whatsappNumber: propWhatsappNumber,
+  formTitle = "Send a",
+  formHighlight = "Message",
+}) {
+  const targetWhatsapp = (propWhatsappNumber || "919940069697").replace(/[^0-9]/g, "");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -55,14 +60,13 @@ export default function ContactForm() {
     setStatus("loading");
 
     // WhatsApp formatting
-    const whatsappNumber = "919940069697"; // 9940069697 with country code +91
     const formattedText = `*G-Venket ram website Enquiry*\n\n` +
       `*Name:* ${formData.name}\n` +
       `*Email:* ${formData.email}\n` +
       `*Phone:* ${formData.phone || "Not provided"}\n\n` +
       `*Message:*\n${formData.message}`;
 
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(formattedText)}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${targetWhatsapp}&text=${encodeURIComponent(formattedText)}`;
     setLastWhatsappUrl(whatsappUrl);
 
     // Open WhatsApp immediately in a new tab to avoid popup blockers
@@ -106,7 +110,10 @@ export default function ContactForm() {
   return (
     <div className="w-full max-w-xl mx-auto p-8 rounded-none bg-[#faf8f5] border border-[#e6e2d8] shadow-sm">
       <h2 className="text-xl uppercase tracking-[0.2em] text-[#1c1a17] font-light mb-8 font-serif">
-        Send a <span className="font-semibold text-[#A97C5B] font-serif italic">Message</span>
+        {formTitle}{" "}
+        <span className="font-semibold text-[#A97C5B] font-serif italic">
+          {formHighlight}
+        </span>
       </h2>
 
       {status === "success" && (

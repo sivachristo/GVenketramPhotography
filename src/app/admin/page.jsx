@@ -48,6 +48,7 @@ import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal"
 import ArtworkModal from "@/components/admin/ArtworkModal";
 import MainImagesManager from "@/components/admin/MainImagesManager";
 import AboutSectionManager from "@/components/admin/AboutSectionManager";
+import ContactSectionManager from "@/components/admin/ContactSectionManager";
 import {
   PortfolioCategoryTabsSkeleton,
   PortfolioSkeletonGrid,
@@ -1425,6 +1426,19 @@ export default function AdminPage() {
                   <User size={14} />
                   <span>About Section</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPortfolioSubTab("contact")}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wider rounded-md font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    portfolioSubTab === "contact"
+                      ? "bg-[#1c1a17] text-[#f5f2eb] shadow-sm"
+                      : "text-neutral-600 hover:text-black hover:bg-white/50"
+                  }`}
+                >
+                  <Phone size={14} />
+                  <span>Contact</span>
+                </button>
               </div>
 
               {/* Sub-tab descriptor info */}
@@ -1433,6 +1447,7 @@ export default function AdminPage() {
                   {portfolioSubTab === "gallery" && "Manage categorized portfolio photos, display order, and tags"}
                   {portfolioSubTab === "main-images" && "Manage homepage hero background slideshow images"}
                   {portfolioSubTab === "about" && "Manage artist profile, bio narrative, quote, portrait, and publications"}
+                  {portfolioSubTab === "contact" && "Manage studio contact info, phone, WhatsApp routing, and studio address"}
                 </span>
               </div>
             </div>
@@ -1442,6 +1457,8 @@ export default function AdminPage() {
               <MainImagesManager />
             ) : portfolioSubTab === "about" ? (
               <AboutSectionManager />
+            ) : portfolioSubTab === "contact" ? (
+              <ContactSectionManager />
             ) : (
               <div>
                 {/* Workspace Toolbar: Search & Tab Stats */}
