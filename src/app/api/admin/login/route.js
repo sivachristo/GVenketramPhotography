@@ -13,18 +13,22 @@ export async function POST(request) {
 
     const expectedUsername =
       process.env.ADMIN_USERNAME ||
-      process.env.NEXT_PUBLIC_ADMIN_USERNAME ||
-      "g-venketram";
+      process.env.NEXT_PUBLIC_ADMIN_USERNAME;
 
     const expectedPassword =
       process.env.ADMIN_PASSWORD ||
-      process.env.NEXT_PUBLIC_ADMIN_PASSWORD ||
-      "12345";
+      process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
+    const backupPassword = process.env.ADMIN_PASSWORD_BACKUP;
+
+    const passwordMatches =
+      String(password) === expectedPassword ||
+      (backupPassword && String(password) === backupPassword);
 
     if (
       username &&
       String(username).trim() === expectedUsername &&
-      String(password) === expectedPassword
+      passwordMatches
     ) {
       return NextResponse.json({ success: true });
     }
