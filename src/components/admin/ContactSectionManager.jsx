@@ -212,31 +212,17 @@ export default function ContactSectionManager() {
             </h3>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
-                    Title Prefix
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titlePrefix || ""}
-                    onChange={(e) => handleInputChange("titlePrefix", e.target.value)}
-                    placeholder="e.g. Get In"
-                    className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
-                    Highlighted Title (Italic Gold)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titleHighlight || ""}
-                    onChange={(e) => handleInputChange("titleHighlight", e.target.value)}
-                    placeholder="e.g. Touch"
-                    className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif italic text-[#A97C5B] font-semibold"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
+                  Highlighted Title (Italic Gold — e.g. Get in Touch · G Venket Ram)
+                </label>
+                <input
+                  type="text"
+                  value={formData.titleHighlight || ""}
+                  onChange={(e) => handleInputChange("titleHighlight", e.target.value)}
+                  placeholder="e.g. Get in Touch"
+                  className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif italic text-[#A97C5B] font-semibold"
+                />
               </div>
 
               <div>
@@ -398,15 +384,10 @@ export default function ContactSectionManager() {
             </div>
 
             {/* Title & Description Preview */}
-            {(formData.titlePrefix?.trim() || formData.titleHighlight?.trim()) ? (
+            {formData.titleHighlight?.trim() ? (
               <div className="space-y-3">
-                <h4 className="text-2xl sm:text-3xl font-light uppercase tracking-widest text-[#1c1a17] font-serif leading-tight">
-                  {formData.titlePrefix || ""}{formData.titlePrefix?.trim() && formData.titleHighlight?.trim() ? " " : ""}
-                  {formData.titleHighlight?.trim() && (
-                    <span className="font-semibold text-[#A97C5B] font-serif italic">
-                      {formData.titleHighlight}
-                    </span>
-                  )}
+                <h4 className="text-2xl sm:text-3xl font-brand font-normal uppercase tracking-widest leading-tight" style={{ color: "#A97C5B" }}>
+                  {formData.titleHighlight}
                 </h4>
                 {formData.description?.trim() && (
                   <p className="text-xs text-neutral-600 font-light leading-relaxed line-clamp-3">
@@ -414,7 +395,7 @@ export default function ContactSectionManager() {
                   </p>
                 )}
               </div>
-            ) : formData.description?.trim() ? (
+                        ) : formData.description?.trim() ? (
               <div className="space-y-3">
                 <p className="text-xs text-neutral-600 font-light leading-relaxed line-clamp-3">
                   {formData.description}

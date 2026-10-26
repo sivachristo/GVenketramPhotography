@@ -49,8 +49,8 @@ export default function Navbar() {
     : "sticky top-0 z-40 w-full border-b border-[#d8d3c5] bg-[#E2DDD3]";
 
   const logoTextClass = isHome
-    ? "font-serif text-sm sm:text-base font-semibold tracking-[0.12em] text-[#F8F5F1] group-hover:text-white transition-colors duration-300"
-    : "font-serif text-sm sm:text-base font-semibold tracking-[0.12em] text-neutral-800 group-hover:text-black transition-colors duration-300";
+    ? "font-brand text-sm sm:text-base font-normal tracking-[0.14em] text-[#F8F5F1] group-hover:text-white transition-colors duration-300"
+    : "font-brand text-sm sm:text-base font-normal tracking-[0.14em] text-neutral-800 group-hover:text-black transition-colors duration-300";
 
   const logoSubTextClass = isHome
     ? "ml-1.5 font-sans text-[7.5px] sm:text-[9px] tracking-[0.25em] text-[#F8F5F1]/80 group-hover:text-white transition-colors duration-300 font-light inline"

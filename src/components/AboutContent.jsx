@@ -8,7 +8,6 @@ export default function AboutContent({ initialData }) {
   const data = initialData || {};
 
   const subtitle = data.subtitle || "";
-  const titlePrefix = data.titlePrefix || "";
   const titleHighlight = data.titleHighlight || "";
   const bioParagraph1 = data.bioParagraph1 || "";
   const quote = data.quote || "";
@@ -18,7 +17,7 @@ export default function AboutContent({ initialData }) {
   const imageUrl = data.imageUrl || "";
   const imageAlt = data.imageAlt || "Portrait";
 
-  const hasTitle = titlePrefix.trim() || titleHighlight.trim();
+  const hasTitle = titleHighlight.trim();
   const hasSubtitle = subtitle.trim();
   const hasHeader = hasTitle || hasSubtitle;
   const hasTextContent = hasHeader || bioParagraph1.trim() || quote.trim() || bioParagraph2.trim() || publications.length > 0;
@@ -45,13 +44,8 @@ export default function AboutContent({ initialData }) {
                     </span>
                   )}
                   {hasTitle && (
-                    <h1 className="text-4xl sm:text-5xl font-light uppercase tracking-widest text-[#1c1a17] leading-tight font-serif">
-                      {titlePrefix}{titlePrefix.trim() && titleHighlight.trim() ? " " : ""}
-                      {titleHighlight.trim() && (
-                        <span className="font-semibold text-[#A97C5B] font-serif italic">
-                          {titleHighlight}
-                        </span>
-                      )}
+                    <h1 className="text-4xl sm:text-5xl font-brand font-normal uppercase tracking-widest leading-tight" style={{ color: "#A97C5B" }}>
+                      {titleHighlight}
                     </h1>
                   )}
                 </div>

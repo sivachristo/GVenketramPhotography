@@ -8,7 +8,6 @@ import { fadeIn } from "@/utils/animations";
 export default function ContactContent({ initialData }) {
   const data = initialData || {};
 
-  const titlePrefix = data.titlePrefix || "";
   const titleHighlight = data.titleHighlight || "";
   const description = data.description || "";
 
@@ -60,7 +59,7 @@ export default function ContactContent({ initialData }) {
     });
   }
 
-  const hasTitle = titlePrefix.trim() || titleHighlight.trim();
+  const hasTitle = titleHighlight.trim();
   const hasDescription = description.trim();
   const hasContactDetails = contactDetails.length > 0;
   const hasLeftPanel = hasTitle || hasDescription || hasContactDetails;
@@ -80,13 +79,8 @@ export default function ContactContent({ initialData }) {
             >
               {hasTitle && (
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-light uppercase tracking-widest text-[#1c1a17] leading-tight font-serif">
-                    {titlePrefix}{titlePrefix && titleHighlight ? " " : ""}
-                    {titleHighlight && (
-                      <span className="font-semibold text-[#A97C5B] font-serif italic">
-                        {titleHighlight}
-                      </span>
-                    )}
+                  <h1 className="text-3xl sm:text-4xl font-brand font-normal uppercase tracking-widest leading-tight" style={{ color: "#A97C5B" }}>
+                    {titleHighlight}
                   </h1>
                 </div>
               )}

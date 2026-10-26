@@ -41,7 +41,7 @@ export default function Footer() {
         {/* Left Section */}
         <div className="flex flex-col items-center md:items-start space-y-2">
           <p className="text-xs uppercase text-[#1c1a17]">
-            <span className="font-serif font-semibold tracking-[0.14em]">G VENKET RAM</span>{" "}
+            <span className="font-brand font-normal tracking-[0.16em]">G VENKET RAM</span>{" "}
             <span className="font-sans font-light text-[9px] tracking-[0.25em] text-neutral-500">PHOTOGRAPHY</span>
           </p>
           <p className="text-xs text-neutral-400">

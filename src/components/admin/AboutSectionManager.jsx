@@ -290,31 +290,17 @@ export default function AboutSectionManager() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
-                    First Name / Prefix
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titlePrefix || ""}
-                    onChange={(e) => handleInputChange("titlePrefix", e.target.value)}
-                    placeholder="e.g. G."
-                    className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
-                    Highlighted Name / Surname (Italic Gold)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titleHighlight || ""}
-                    onChange={(e) => handleInputChange("titleHighlight", e.target.value)}
-                    placeholder="e.g. Venketram"
-                    className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif italic text-[#A97C5B] font-semibold"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-neutral-600 font-semibold mb-1">
+                  Highlighted Name (Italic Gold — e.g. G Venket Ram)
+                </label>
+                <input
+                  type="text"
+                  value={formData.titleHighlight || ""}
+                  onChange={(e) => handleInputChange("titleHighlight", e.target.value)}
+                  placeholder="e.g. G Venket Ram"
+                  className="w-full px-3.5 py-2 text-xs bg-[#faf8f5] border border-[#e6e2d8] rounded-md focus:outline-none focus:border-[#1c1a17] transition-colors font-serif italic text-[#A97C5B] font-semibold"
+                />
               </div>
             </div>
           </div>
@@ -543,11 +529,8 @@ export default function AboutSectionManager() {
               <span className="text-[10px] uppercase tracking-[0.25em] text-[#A97C5B] font-semibold block">
                 {formData.subtitle || "The Artist Behind the Lens"}
               </span>
-              <h4 className="text-2xl font-light uppercase tracking-widest text-[#1c1a17] font-serif leading-tight">
-                {formData.titlePrefix || "G."}{" "}
-                <span className="font-semibold text-[#A97C5B] font-serif italic">
-                  {formData.titleHighlight || "Venketram"}
-                </span>
+              <h4 className="text-2xl font-brand font-normal uppercase tracking-widest leading-tight" style={{ color: "#A97C5B" }}>
+                {formData.titleHighlight || "G Venket Ram"}
               </h4>
             </div>
 

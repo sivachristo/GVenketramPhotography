@@ -48,7 +48,7 @@ export default function WorkshopTicketConfirmation({ data, paymentData, onReset 
               <span className="text-[10px] uppercase tracking-[0.3em] text-[#A97C5B] font-semibold block">
                 Official Masterclass Pass
               </span>
-              <h2 className="text-xl sm:text-2xl font-serif font-bold uppercase tracking-wider">
+              <h2 className="text-xl sm:text-2xl font-brand font-normal uppercase tracking-wider">
                 G. VENKET RAM <span className="font-light italic text-[#A97C5B]">STUDIOS</span>
               </h2>
             </div>
