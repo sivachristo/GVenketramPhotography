@@ -1,4 +1,5 @@
 export const PORTFOLIO_CATEGORIES = [
+  "All",
   "Advertising",
   "Fashion",
   "Jewellery",

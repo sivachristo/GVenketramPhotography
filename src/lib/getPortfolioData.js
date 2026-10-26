@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const DEFAULT_CATEGORIES = [
+  "All",
   "Advertising",
   "Fashion",
   "Jewellery",

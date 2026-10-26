@@ -70,11 +70,10 @@ export default function Gallery({ initialCategory = "All", categories, allImages
     setVisibleCount(PAGE_SIZE);
   };
 
-  // Filter photos based on selection
-  const filteredImages =
-    activeCategory === "All"
-      ? allImages
-      : allImages.filter((img) => img.category === activeCategory);
+  // Filter photos strictly based on selection
+  const filteredImages = allImages.filter(
+    (img) => img.category?.toLowerCase() === activeCategory?.toLowerCase()
+  );
 
   // Format images for react-photo-album and lightbox
   const photos = filteredImages.map((img, idx) => ({
@@ -168,7 +167,7 @@ export default function Gallery({ initialCategory = "All", categories, allImages
                       photo={option.photo}
                       width={option.width}
                       height={option.height}
-                      showCategoryTag={activeCategory === "All"}
+                      showCategoryTag={false}
                     />
                   ),
                 }}

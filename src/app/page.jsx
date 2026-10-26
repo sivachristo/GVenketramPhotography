@@ -21,8 +21,10 @@ export default async function Home() {
     }))
   );
 
-  // Categories list including "All" as default filter
-  const galleryCategories = ["All", ...categories];
+  // Categories list with 'All' as the first dedicated category
+  const galleryCategories = categories.includes("All")
+    ? categories
+    : ["All", ...categories];
 
   return (
     <div className="min-h-screen bg-[#f5f2eb]">

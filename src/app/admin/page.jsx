@@ -778,7 +778,7 @@ export default function AdminPage() {
   );
 
   const displayedImages = allImagesWithCategory.filter((img) => {
-    const matchesCategory = activeCategory === "All" || img.category === activeCategory;
+    const matchesCategory = img.category?.toLowerCase() === activeCategory?.toLowerCase();
     const matchesSearch =
       !searchQuery ||
       img.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1470,15 +1470,6 @@ export default function AdminPage() {
                   <PortfolioCategoryTabsSkeleton />
                 ) : (
                   <>
-                    <button
-                      onClick={() => setActiveCategory("All")}
-                      className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded transition-all cursor-pointer whitespace-nowrap ${activeCategory === "All"
-                        ? "bg-[#1c1a17] text-[#f5f2eb] font-semibold"
-                        : "bg-[#e6e2d8]/60 text-neutral-600 hover:bg-[#e6e2d8] hover:text-black"
-                        }`}
-                    >
-                      All Tabs ({allImagesWithCategory.length})
-                    </button>
 
                     {categories.map((catName) => {
                       const catObj = portfolioData.find((c) => c.category === catName);
@@ -1537,16 +1528,14 @@ export default function AdminPage() {
             ) : displayedImages.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {displayedImages.map((img, idx) => {
-                  // Find index within context for reordering
-                  const isAllView = activeCategory === "All";
                   const catObj = portfolioData.find((c) => c.category === img.category);
-                  const inCatIndex = catObj ? catObj.images.findIndex((i) => i.src === img.src) : -1;
+                  const inCatIndex = catObj
+                    ? catObj.images.findIndex((i) => (img.id && i.id === img.id) || i.src === img.src)
+                    : -1;
 
-                  const isFirst = isAllView ? idx === 0 : inCatIndex <= 0;
-                  const isLast = isAllView
-                    ? idx >= displayedImages.length - 1
-                    : catObj ? inCatIndex >= catObj.images.length - 1 : true;
-                  const displayPos = isAllView ? idx + 1 : inCatIndex + 1;
+                  const isFirst = inCatIndex <= 0;
+                  const isLast = catObj ? inCatIndex >= catObj.images.length - 1 : true;
+                  const displayPos = inCatIndex + 1;
 
                   return (
                     <div
@@ -1829,7 +1818,7 @@ export default function AdminPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         categories={categories}
-        defaultCategory={activeCategory !== "All" ? activeCategory : categories[0] || "Advertising"}
+        defaultCategory={activeCategory || "All"}
         onSuccess={handlePortfolioImagesAdded}
         showToast={showToast}
       />
