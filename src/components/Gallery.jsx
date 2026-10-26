@@ -121,7 +121,7 @@ export default function Gallery({ initialCategory = "All", categories, allImages
       {/* Category Filtering Tabs (Only shown if initialCategory is 'All') */}
       {initialCategory === "All" && (
         <div className="mb-10 flex flex-wrap items-center justify-center gap-2 border-b border-[#e6e2d8]/60 pb-6">
-          {categories.map((category) => {
+          {Array.from(new Set(categories.filter(Boolean))).map((category) => {
             const isActive = activeCategory === category;
             return (
               <button

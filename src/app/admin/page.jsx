@@ -276,7 +276,12 @@ export default function AdminPage() {
       const res = await fetch("/api/portfolio");
       if (res.ok) {
         const data = await res.json();
-        setCategories(data.categories || []);
+        const rawCats = data.categories || [];
+        const normalizedCats = [
+          "All",
+          ...rawCats.filter((c) => c && c.toLowerCase() !== "all"),
+        ];
+        setCategories(normalizedCats);
         setPortfolioData(data.portfolioData || []);
         setModifiedFieldsMap({});
         setHasUnsavedChanges(false);

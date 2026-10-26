@@ -19,9 +19,13 @@ export async function GET() {
         .order("display_order", { ascending: true });
 
       if (!imgError && dbImages) {
-        const categoryList = dbCategories && dbCategories.length > 0
-          ? dbCategories.map((c) => c.name)
+        const rawList = dbCategories && dbCategories.length > 0
+          ? dbCategories.map((c) => c.name).filter(Boolean)
           : DEFAULT_CATEGORIES;
+        const categoryList = [
+          "All",
+          ...rawList.filter((c) => c.toLowerCase() !== "all"),
+        ];
 
         // Group images by category preserving database UUID id
         const grouped = categoryList.map((catName) => ({

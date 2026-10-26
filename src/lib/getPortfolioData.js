@@ -22,7 +22,9 @@ export async function getPortfolioCategories() {
         .order("display_order", { ascending: true });
 
       if (!error && data && data.length > 0) {
-        return data.map((c) => c.name);
+        const names = data.map((c) => c.name).filter(Boolean);
+        const withoutAll = names.filter((n) => n.toLowerCase() !== "all");
+        return ["All", ...withoutAll];
       }
     }
   } catch (err) {
