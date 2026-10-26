@@ -59,6 +59,7 @@ async function processSingleFile(file) {
       return {
         success: true,
         src: cRes.secure_url,
+        url: cRes.secure_url,
         title: formattedTitle,
         originalName: file.name,
         width: cRes.width || width,
@@ -103,6 +104,7 @@ async function processSingleFile(file) {
           return {
             success: true,
             src: urlData.publicUrl,
+            url: urlData.publicUrl,
             title: formattedTitle,
             originalName: file.name,
             width,
@@ -147,6 +149,7 @@ async function processSingleFile(file) {
   return {
     success: true,
     src: `/uploads/${uniqueFilename}`,
+    url: `/uploads/${uniqueFilename}`,
     title: formattedTitle,
     originalName: file.name,
     width,
@@ -169,12 +172,17 @@ export async function POST(request) {
 
     // Process all files in parallel
     const uploadPromises = fileList.map((file) => processSingleFile(file));
-    const results = await Promise.all(uploadPromises);
+    const rawResults = await Promise.all(uploadPromises);
+    const results = rawResults.map((r) => ({
+      ...r,
+      url: r.url || r.src,
+    }));
 
     if (fileList.length === 1) {
       const single = results[0];
       return NextResponse.json({
         ...single,
+        url: single.url || single.src,
         files: results,
       });
     }

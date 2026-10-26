@@ -121,14 +121,39 @@ export default function AboutSectionManager() {
       });
 
       const data = await res.json();
+      const uploadedUrl =
+        data.url ||
+        data.src ||
+        data.imageUrl ||
+        (data.files && data.files[0] && (data.files[0].url || data.files[0].src));
 
-      if (res.ok && data.success && data.url) {
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: data.url,
-          imageAlt: prev.imageAlt || `${prev.titlePrefix} ${prev.titleHighlight} Portrait`,
-        }));
-        showToast("Portrait image uploaded and optimized successfully!");
+      if (res.ok && (data.success || uploadedUrl) && uploadedUrl) {
+        const updated = {
+          ...formData,
+          imageUrl: uploadedUrl,
+          imageAlt: formData.imageAlt || `${formData.titlePrefix || ""} ${formData.titleHighlight || "G. Venket Ram"} Portrait`.trim(),
+        };
+        setFormData(updated);
+
+        // Auto-persist directly to about API so the main /about page updates immediately
+        try {
+          const saveRes = await fetch("/api/about", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          });
+          const saveData = await saveRes.json();
+          if (saveRes.ok && saveData.success) {
+            setInitialData(saveData.about);
+            setFormData(saveData.about);
+            showToast("Portrait image uploaded and published to About page!");
+            return;
+          }
+        } catch (saveErr) {
+          console.warn("Auto-save about notice:", saveErr);
+        }
+
+        showToast("Portrait image uploaded! Click 'Save Changes' to publish.", "success");
       } else {
         throw new Error(data.error || "Image upload failed");
       }
