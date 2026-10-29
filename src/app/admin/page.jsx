@@ -41,6 +41,8 @@ import {
   EyeOff,
   Sliders,
   Settings as SettingsIcon,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
@@ -127,6 +129,12 @@ export default function AdminPage() {
 
   // Delete Confirmation Modal State
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
+
+  // Multi-select bulk delete state
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedImages, setSelectedImages] = useState(new Set());
+  const [isBulkDeleteConfirm, setIsBulkDeleteConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Add Image Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -753,6 +761,71 @@ export default function AdminPage() {
           return cat;
         })
       );
+    }
+  };
+
+  // Toggle selection of a single image by ID
+  const toggleSelectImage = (id) => {
+    setSelectedImages((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Select all currently displayed images
+  const handleSelectAll = (displayedImgs) => {
+    const ids = displayedImgs.map((img) => img.id).filter(Boolean);
+    setSelectedImages(new Set(ids));
+  };
+
+  // Exit select mode and clear selection
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedImages(new Set());
+  };
+
+  // Bulk delete handler — deletes all selected images
+  const handleBulkDelete = async () => {
+    if (selectedImages.size === 0) return;
+    setIsBulkDeleting(true);
+    const idsToDelete = [...selectedImages];
+
+    const results = await Promise.allSettled(
+      idsToDelete.map((id) =>
+        fetch(`/api/portfolio/${id}`, { method: "DELETE" })
+          .then((r) => ({ id, ok: r.ok }))
+          .catch(() => ({ id, ok: false }))
+      )
+    );
+
+    const succeeded = results
+      .filter((r) => r.status === "fulfilled" && r.value.ok)
+      .map((r) => r.value.id);
+    const failed = idsToDelete.length - succeeded.length;
+
+    if (succeeded.length > 0) {
+      setPortfolioData((prev) =>
+        prev.map((cat) => ({
+          ...cat,
+          images: cat.images.filter((img) => !succeeded.includes(img.id)),
+        }))
+      );
+    }
+
+    setIsBulkDeleting(false);
+    setIsBulkDeleteConfirm(false);
+    exitSelectMode();
+
+    if (failed > 0) {
+      showToast(`Deleted ${succeeded.length} image(s). ${failed} failed.`, "error");
+      fetchPortfolioData();
+    } else {
+      showToast(`Deleted ${succeeded.length} image(s) successfully.`);
     }
   };
 
@@ -1533,15 +1606,44 @@ export default function AdminPage() {
             </div>
 
             {/* Current Active Category Description Bar */}
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs uppercase tracking-[0.2em] font-semibold text-neutral-500">
                 Managing: <span className="text-[#1c1a17] font-bold">{activeCategory}</span> ({displayedImages.length} Images Shown)
               </span>
-              {hasUnsavedChanges && (
-                <span className="text-xs text-amber-800 bg-amber-100 border border-amber-300 px-3 py-1 rounded font-medium">
-                  You have unsaved changes. Click "Save Changes" to apply live.
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {hasUnsavedChanges && (
+                  <span className="text-xs text-amber-800 bg-amber-100 border border-amber-300 px-3 py-1 rounded font-medium">
+                    You have unsaved changes. Click "Save Changes" to apply live.
+                  </span>
+                )}
+                {/* Select Mode Toggle */}
+                {!isSelectMode ? (
+                  <button
+                    onClick={() => { setIsSelectMode(true); setSelectedImages(new Set()); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs uppercase tracking-widest rounded border border-[#e6e2d8] bg-[#faf8f5] text-neutral-600 hover:bg-[#e6e2d8] hover:text-black transition-all cursor-pointer font-semibold"
+                  >
+                    <CheckSquare size={13} />
+                    Select
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSelectAll(displayedImages)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs uppercase tracking-widest rounded border border-[#1c1a17] bg-[#1c1a17] text-[#f5f2eb] hover:bg-neutral-800 transition-all cursor-pointer font-semibold"
+                    >
+                      <CheckSquare size={13} />
+                      Select All ({displayedImages.filter(i => i.id).length})
+                    </button>
+                    <button
+                      onClick={exitSelectMode}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs uppercase tracking-widest rounded border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100 transition-all cursor-pointer font-semibold"
+                    >
+                      <X size={13} />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Admin Images Grid */}
@@ -1559,23 +1661,48 @@ export default function AdminPage() {
                   const isLast = catObj ? inCatIndex >= catObj.images.length - 1 : true;
                   const displayPos = inCatIndex + 1;
 
+                  const isSelected = isSelectMode && img.id && selectedImages.has(img.id);
+
                   return (
                     <div
                       key={img.id || `${img.category}-${img.src}-${idx}`}
-                      className="bg-[#faf8f5] border border-[#e6e2d8] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col group"
+                      className={`bg-[#faf8f5] border rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group ${
+                        isSelected ? "border-red-500 ring-2 ring-red-400/50" : "border-[#e6e2d8]"
+                      }`}
                     >
-                      {/* Thumbnail Preview - Clickable for Full View */}
+                      {/* Thumbnail Preview - Clickable for Full View or Select */}
                       <div
-                        onClick={() => setPreviewImage(img)}
+                        onClick={() => {
+                          if (isSelectMode && img.id) {
+                            toggleSelectImage(img.id);
+                          } else {
+                            setPreviewImage(img);
+                          }
+                        }}
                         className="relative h-56 w-full bg-neutral-200 overflow-hidden cursor-pointer group/thumb"
                       >
                         <Image
                           src={img.src}
                           alt={img.title || "Portfolio Image"}
                           fill
-                          className="object-cover transition-transform duration-500 group-hover/thumb:scale-105"
+                          className={`object-cover transition-transform duration-500 group-hover/thumb:scale-105 ${
+                            isSelected ? "brightness-75" : ""
+                          }`}
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                         />
+
+                        {/* Select Mode Checkbox Overlay */}
+                        {isSelectMode && img.id && (
+                          <div className="absolute inset-0 flex items-center justify-center z-20">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                              isSelected
+                                ? "bg-red-600 border-red-600 text-white"
+                                : "bg-white/80 border-white/80 text-neutral-400"
+                            }`}>
+                              {isSelected ? <Check size={16} /> : <Square size={16} />}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Tag Badge */}
                         <div className="absolute top-2 left-2 bg-[#1c1a17]/85 text-[#f5f2eb] px-2.5 py-1 rounded text-[10px] uppercase tracking-widest font-semibold flex items-center gap-1 backdrop-blur-xs z-10">
@@ -1583,38 +1710,42 @@ export default function AdminPage() {
                           {img.category}
                         </div>
 
-                        {/* Quick Full View Hover Overlay */}
-                        <div className="absolute inset-0 bg-[#1c1a17]/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 text-white">
-                          <Eye size={20} />
-                          <span className="text-xs uppercase tracking-widest font-medium">Full View</span>
-                        </div>
+                        {/* Quick Full View Hover Overlay (hidden in select mode) */}
+                        {!isSelectMode && (
+                          <div className="absolute inset-0 bg-[#1c1a17]/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 text-white">
+                            <Eye size={20} />
+                            <span className="text-xs uppercase tracking-widest font-medium">Full View</span>
+                          </div>
+                        )}
 
-                        {/* Top Action Overlay Buttons */}
-                        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                          {/* Edit Button → opens popup dialog */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenPortfolioEditModal(img);
-                            }}
-                            className="p-2 rounded transition-colors shadow-sm cursor-pointer bg-[#1c1a17]/90 text-white hover:bg-black"
-                            title="Edit Image"
-                          >
-                            <Pencil size={14} />
-                          </button>
+                        {/* Top Action Overlay Buttons (hidden in select mode) */}
+                        {!isSelectMode && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                            {/* Edit Button → opens popup dialog */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPortfolioEditModal(img);
+                              }}
+                              className="p-2 rounded transition-colors shadow-sm cursor-pointer bg-[#1c1a17]/90 text-white hover:bg-black"
+                              title="Edit Image"
+                            >
+                              <Pencil size={14} />
+                            </button>
 
-                          {/* Quick Delete Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveImage(img.category, img.src, img.title, img.id);
-                            }}
-                            className="p-2 bg-red-600/90 text-white rounded hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
-                            title="Remove Image"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                            {/* Quick Delete Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveImage(img.category, img.src, img.title, img.id);
+                              }}
+                              className="p-2 bg-red-600/90 text-white rounded hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                              title="Remove Image"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Image Metadata & Controls Card Body */}
@@ -1767,6 +1898,38 @@ export default function AdminPage() {
         )}
       </main>
 
+      {/* BULK DELETE FLOATING ACTION BAR */}
+      <AnimatePresence>
+        {isSelectMode && selectedImages.size > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3 bg-[#1c1a17] text-[#f5f2eb] rounded-full shadow-2xl border border-neutral-700"
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest">
+              {selectedImages.size} selected
+            </span>
+            <div className="w-px h-4 bg-neutral-600" />
+            <button
+              onClick={() => setIsBulkDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs uppercase tracking-widest font-semibold rounded-full transition-colors cursor-pointer"
+            >
+              <Trash2 size={13} />
+              Delete Selected
+            </button>
+            <button
+              onClick={exitSelectMode}
+              className="p-1.5 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              title="Cancel selection"
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* FULL VIEW IMAGE PREVIEW MODAL */}
       <AnimatePresence>
         {previewImage && (
@@ -1844,6 +2007,78 @@ export default function AdminPage() {
         onSuccess={handlePortfolioImagesAdded}
         showToast={showToast}
       />
+
+      {/* BULK DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isBulkDeleteConfirm && (
+          <div
+            onClick={() => !isBulkDeleting && setIsBulkDeleteConfirm(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[#f5f2eb] border border-[#d8d3c5] rounded-xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-6 py-4 bg-red-900/10 border-b border-red-200/60">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-full text-red-700">
+                    <AlertCircle size={20} />
+                  </div>
+                  <h2 className="text-sm font-serif uppercase tracking-widest font-bold text-red-950">
+                    Bulk Delete
+                  </h2>
+                </div>
+                <button
+                  onClick={() => !isBulkDeleting && setIsBulkDeleteConfirm(false)}
+                  className="p-1 text-neutral-400 hover:text-black transition-colors cursor-pointer disabled:opacity-40"
+                  disabled={isBulkDeleting}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6 text-xs text-neutral-700 space-y-3">
+                <p className="leading-relaxed">
+                  You are about to permanently delete{" "}
+                  <strong className="text-red-700 font-bold text-sm">{selectedImages.size} image{selectedImages.size !== 1 ? "s" : ""}</strong>.
+                  This will also remove them from Cloudinary / Supabase storage.
+                </p>
+                <p className="text-neutral-500">This action cannot be undone.</p>
+              </div>
+              <div className="px-6 py-4 bg-[#E2DDD3] border-t border-[#d8d3c5] flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteConfirm(false)}
+                  disabled={isBulkDeleting}
+                  className="px-4 py-2 text-xs uppercase tracking-widest rounded border border-neutral-300 hover:bg-neutral-200 text-neutral-700 font-medium transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-5 py-2 text-xs uppercase tracking-widest rounded bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {isBulkDeleting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      Delete {selectedImages.size} Image{selectedImages.size !== 1 ? "s" : ""}
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
