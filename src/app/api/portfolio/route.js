@@ -210,6 +210,11 @@ export async function PATCH(request) {
       // 2. Single Item Create
       if (action === "create" || image) {
         const img = image || body;
+
+        if (!img.src) {
+          return NextResponse.json({ error: "Missing required 'src' field for image creation" }, { status: 400 });
+        }
+
         const targetCat = img.category || img.category_name || "Advertising";
         let orderNum = img.display_order !== undefined ? img.display_order : img.position_num;
 

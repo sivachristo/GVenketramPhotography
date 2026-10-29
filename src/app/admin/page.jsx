@@ -707,17 +707,6 @@ export default function AdminPage() {
     if (!deleteConfirmTarget) return;
     const { categoryName, imageSrc, imageTitle, imageId } = deleteConfirmTarget;
 
-    const updatedData = portfolioData.map((cat) => {
-      if (cat.category === categoryName) {
-        return {
-          ...cat,
-          images: cat.images.filter((img) => (imageId ? img.id !== imageId : img.src !== imageSrc)),
-        };
-      }
-      return cat;
-    });
-
-    setPortfolioData(updatedData);
     setDeleteConfirmTarget(null);
 
     if (imageId) {
@@ -727,15 +716,43 @@ export default function AdminPage() {
         });
 
         if (res.ok) {
+          // Only remove from UI after confirmed deletion
+          setPortfolioData((prev) =>
+            prev.map((cat) => {
+              if (cat.category === categoryName) {
+                return {
+                  ...cat,
+                  images: cat.images.filter((img) => img.id !== imageId),
+                };
+              }
+              return cat;
+            })
+          );
           showToast(`Removed "${imageTitle || "Image"}"`);
         } else {
           const err = await res.json();
           showToast(err.error || "Failed to delete image", "error");
+          // Re-fetch to ensure UI is in sync with DB
+          fetchPortfolioData();
         }
       } catch (err) {
         console.error("Delete error:", err);
         showToast("Error deleting image", "error");
+        fetchPortfolioData();
       }
+    } else {
+      // No UUID — remove from local UI state only (no DB record to delete)
+      setPortfolioData((prev) =>
+        prev.map((cat) => {
+          if (cat.category === categoryName) {
+            return {
+              ...cat,
+              images: cat.images.filter((img) => img.src !== imageSrc),
+            };
+          }
+          return cat;
+        })
+      );
     }
   };
 

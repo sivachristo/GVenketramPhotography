@@ -193,17 +193,20 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Upload error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         error: "Upload failed: " + error.message,
-        details: error.details || {
-          name: error.name,
-          message: error.message,
-          causeCode: error.cause?.code,
-          causeMessage: error.cause?.message,
-          causeName: error.cause?.name,
-          stack: error.stack,
-        },
+        ...(isProd ? {} : {
+          details: error.details || {
+            name: error.name,
+            message: error.message,
+            causeCode: error.cause?.code,
+            causeMessage: error.cause?.message,
+            causeName: error.cause?.name,
+            stack: error.stack,
+          },
+        }),
       },
       { status: 500 }
     );

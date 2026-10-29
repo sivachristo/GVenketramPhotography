@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // PATCH /api/portfolio/[id] - Updates a single record by ID with only the changed fields
 export async function PATCH(request, { params }) {
   try {
@@ -11,6 +13,10 @@ export async function PATCH(request, { params }) {
 
     if (!id) {
       return NextResponse.json({ error: "Missing item ID in URL path" }, { status: 400 });
+    }
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid item ID format" }, { status: 400 });
     }
 
     if (!isSupabaseConfigured || !supabase) {
@@ -40,6 +46,10 @@ export async function PATCH(request, { params }) {
 
     if (error) throw error;
 
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: "Portfolio record not found" }, { status: 404 });
+    }
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({
@@ -63,6 +73,10 @@ export async function DELETE(request, { params }) {
 
     if (!id) {
       return NextResponse.json({ error: "Missing item ID in URL path" }, { status: 400 });
+    }
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid item ID format" }, { status: 400 });
     }
 
     if (!isSupabaseConfigured || !supabase) {
@@ -134,6 +148,10 @@ export async function GET(request, { params }) {
 
     if (!id) {
       return NextResponse.json({ error: "Missing item ID in URL path" }, { status: 400 });
+    }
+
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: "Invalid item ID format" }, { status: 400 });
     }
 
     if (!isSupabaseConfigured || !supabase) {
