@@ -40,40 +40,26 @@ export default function Footer() {
       <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 px-4 sm:px-8 lg:px-12">
         {/* Left Section */}
         <div className="flex flex-col items-center md:items-start space-y-2">
-          <p className="text-xs uppercase text-[#1c1a17]">
-            <span className="font-brand font-normal tracking-[0.16em]">G VENKET RAM</span>{" "}
-            <span className="font-sans font-light text-[9px] tracking-[0.25em] text-neutral-500">PHOTOGRAPHY</span>
-          </p>
           <p className="text-xs text-neutral-400">
             © {new Date().getFullYear()} G VENKET RAM PHOTOGRAPHY. All rights reserved.
           </p>
         </div>
 
         {/* Middle Links */}
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-neutral-400">
-          <Link href="/" className="hover:text-black transition-colors duration-300">
-            Home
-          </Link>
-          {isArtGalleryEnabled && (
-            <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
-              Art Gallery
-            </Link>
-          )}
-          {isWorkshopEnabled && (
-            <Link href="/workshop" className="hover:text-black transition-colors duration-300">
-              Workshop
-            </Link>
-          )}
-          <Link href="/about" className="hover:text-black transition-colors duration-300">
-            About
-          </Link>
-          <Link href="/contact" className="hover:text-black transition-colors duration-300">
-            Contact
-          </Link>
-          <Link href="/admin" className="hover:text-black transition-colors duration-300">
-            Admin
-          </Link>
-        </div>
+        {(isArtGalleryEnabled || isWorkshopEnabled) && (
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-neutral-400">
+            {isArtGalleryEnabled && (
+              <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">
+                Art Gallery
+              </Link>
+            )}
+            {isWorkshopEnabled && (
+              <Link href="/workshop" className="hover:text-black transition-colors duration-300">
+                Workshop
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* Right Section */}
         <div className="flex flex-col items-center md:items-end space-y-3">
