@@ -88,7 +88,7 @@ export default function AboutContent({ initialData }) {
               {bio1Paragraphs.length > 0 && (
                 <div className="space-y-6">
                   {/* Lead opening paragraph */}
-                  <p className="text-lg sm:text-xl leading-relaxed text-[#1c1a17] font-serif font-light">
+                  <p className="text-[14px] leading-relaxed text-[#1c1a17] font-light">
                     {bio1Paragraphs[0]}
                   </p>
 
@@ -96,7 +96,7 @@ export default function AboutContent({ initialData }) {
                   {bio1Paragraphs.slice(1).map((para, idx) => (
                     <p
                       key={`bio1-${idx}`}
-                      className="text-[15px] sm:text-base leading-relaxed text-neutral-600 font-light"
+                      className="text-[14px] leading-relaxed text-neutral-600 font-light"
                     >
                       {para}
                     </p>
@@ -106,11 +106,11 @@ export default function AboutContent({ initialData }) {
 
               {/* Editorial Quote Block */}
               {quote.trim() && (
-                <div className="relative my-8 p-7 sm:p-9 rounded-2xl bg-[#faf8f5] border border-[#e6e2d8] shadow-sm">
-                  <div className="absolute top-3 left-5 text-5xl text-[#A97C5B]/25 font-serif select-none pointer-events-none">
+                <div className="relative my-8 p-6 sm:p-7 rounded-2xl bg-[#faf8f5] border border-[#e6e2d8] shadow-sm">
+                  <div className="absolute top-2 left-4 text-4xl text-[#A97C5B]/25 font-serif select-none pointer-events-none">
                     &ldquo;
                   </div>
-                  <blockquote className="relative font-serif italic text-lg sm:text-xl md:text-2xl text-[#1c1a17] leading-relaxed font-light pl-6 border-l-2 border-[#A97C5B]">
+                  <blockquote className="relative font-serif italic text-base sm:text-lg text-[#1c1a17] leading-relaxed font-light pl-6 border-l-2 border-[#A97C5B]">
                     &ldquo;{quote}&rdquo;
                   </blockquote>
                 </div>
@@ -122,7 +122,7 @@ export default function AboutContent({ initialData }) {
                   {bio2Paragraphs.map((para, idx) => (
                     <p
                       key={`bio2-${idx}`}
-                      className="text-[15px] sm:text-base leading-relaxed text-neutral-600 font-light"
+                      className="text-[14px] leading-relaxed text-neutral-600 font-light"
                     >
                       {para}
                     </p>
