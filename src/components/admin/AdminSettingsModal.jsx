@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Server, ShieldCheck } from "lucide-react";
+import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function AdminSettingsModal({ isOpen, onClose }) {
-  const { isArtGalleryEnabled, isWorkshopEnabled, updateVisibility } = useSettings();
+  const { isArtGalleryEnabled, isWorkshopEnabled, updateVisibility, isUnderConstruction, updateUnderConstruction } = useSettings();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -216,13 +216,12 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                         </div>
                         <div className="w-full bg-neutral-100 rounded-full h-2 mt-1 overflow-hidden">
                           <div
-                            className={`h-2 rounded-full transition-all duration-500 ${
-                              stats.supabase.storageMB >= 900
-                                ? "bg-red-600"
-                                : stats.supabase.storageMB >= 750
+                            className={`h-2 rounded-full transition-all duration-500 ${stats.supabase.storageMB >= 900
+                              ? "bg-red-600"
+                              : stats.supabase.storageMB >= 750
                                 ? "bg-amber-500"
                                 : "bg-emerald-700"
-                            }`}
+                              }`}
                             style={{ width: `${Math.min(100, Math.max(2, (stats.supabase.storageMB / 900) * 100)).toFixed(1)}%` }}
                           />
                         </div>
@@ -278,8 +277,8 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                         </span>
                         <span
                           className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${isArtGalleryEnabled
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                              : "bg-neutral-200 text-neutral-600 border border-neutral-300"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : "bg-neutral-200 text-neutral-600 border border-neutral-300"
                             }`}
                         >
                           {isArtGalleryEnabled ? "Visible" : "Disabled"}
@@ -323,8 +322,8 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                         </span>
                         <span
                           className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${isWorkshopEnabled
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                              : "bg-neutral-200 text-neutral-600 border border-neutral-300"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : "bg-neutral-200 text-neutral-600 border border-neutral-300"
                             }`}
                         >
                           {isWorkshopEnabled ? "Visible" : "Disabled"}
@@ -352,6 +351,73 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                     />
                   </button>
                 </div>
+              </div>
+
+              {/* 3. Under Construction Mode */}
+              <div
+                className={`p-4 rounded-xl border shadow-2xs transition-all space-y-3 ${isUnderConstruction
+                  ? "bg-amber-50 border-amber-300"
+                  : "bg-white border-[#e6e2d8] hover:border-[#1c1a17]/30"
+                  }`}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`p-2.5 rounded-lg ${isUnderConstruction
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-[#f5f2eb] text-[#A97C5B]"
+                        }`}
+                    >
+                      <Construction size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#1c1a17] uppercase tracking-wider">
+                          Under Construction Mode
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${isUnderConstruction
+                            ? "bg-amber-200 text-amber-900 border border-amber-400"
+                            : "bg-neutral-200 text-neutral-600 border border-neutral-300"
+                            }`}
+                        >
+                          {isUnderConstruction ? "🚧 Active" : "Off"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Replaces all public pages with a coming-soon screen. Admin panel stays accessible.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isUnderConstruction}
+                    onClick={() => updateUnderConstruction(!isUnderConstruction)}
+                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isUnderConstruction ? "bg-amber-500" : "bg-neutral-300"
+                      }`}
+                    title="Toggle Under Construction Mode"
+                  >
+                    <span className="sr-only">Toggle Under Construction Mode</span>
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isUnderConstruction ? "translate-x-6" : "translate-x-0"
+                        }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Live warning banner — only shown when active */}
+                {isUnderConstruction && (
+                  <div className="flex items-start gap-2 text-[11px] text-amber-900 bg-amber-100 border border-amber-300 rounded-lg px-3 py-2.5">
+                    <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                    <span>
+                      <strong>Your site is hidden from visitors.</strong> Only{" "}
+                      <code className="bg-amber-200 px-1 rounded text-[10px]">/admin</code> remains
+                      accessible. Toggle off to restore the live site.
+                    </span>
+                  </div>
+                )}
               </div>
 
             </div>

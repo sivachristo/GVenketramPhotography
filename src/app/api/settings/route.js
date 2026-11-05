@@ -8,10 +8,14 @@ let cachedSettings = {
     artGallery: true,
     workshop: true,
   },
+  underConstruction: false,
   updatedAt: new Date().toISOString(),
 };
 
 const TABLE = "site_settings";
+
+const COOKIE_NAME = "gvr_construction";
+const COOKIE_OPTS = { path: "/", httpOnly: false, maxAge: 60 * 60 * 24 * 365, sameSite: "lax" };
 
 export async function GET() {
   try {
@@ -24,23 +28,33 @@ export async function GET() {
           .single();
 
         if (!error && data && data.settings) {
-          cachedSettings = data.settings;
-          return NextResponse.json({
+          // Merge: defaults → in-memory → Supabase, so no key is ever lost
+          cachedSettings = {
+            underConstruction: false,
+            ...cachedSettings,
+            ...data.settings,
+          };
+          const res = NextResponse.json({
             success: true,
             settings: cachedSettings,
             source: "supabase",
           });
+          // Keep the cookie in sync so middleware can read it without a fetch
+          res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+          return res;
         }
       } catch (err) {
         console.warn("Supabase GET site_settings notice:", err.message);
       }
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       settings: cachedSettings,
       source: "memory",
     });
+    res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+    return res;
   } catch (error) {
     console.error("Error fetching settings:", error);
     return NextResponse.json(
@@ -75,6 +89,15 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(),
     };
 
+    // Handle underConstruction flag (top-level, not nested under visibility)
+    if (body?.underConstruction !== undefined) {
+      cachedSettings = {
+        ...cachedSettings,
+        underConstruction: Boolean(body.underConstruction),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { error: sbErr } = await supabase.from(TABLE).upsert({
@@ -94,11 +117,14 @@ export async function POST(request) {
     revalidatePath("/", "layout");
     revalidatePath("/admin");
 
-    return NextResponse.json({
+    // Set cookie so middleware can read under-construction state instantly (no fetch needed)
+    const res = NextResponse.json({
       success: true,
       message: "Settings updated successfully",
       settings: cachedSettings,
     });
+    res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+    return res;
   } catch (error) {
     console.error("Error updating settings:", error);
     return NextResponse.json(

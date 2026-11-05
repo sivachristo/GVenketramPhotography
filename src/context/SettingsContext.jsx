@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
     artGallery: true,
     workshop: true,
   },
+  underConstruction: false,
 };
 
 export function SettingsProvider({ children }) {
@@ -98,8 +99,27 @@ export function SettingsProvider({ children }) {
     });
   };
 
+  // Toggle the site-wide under construction mode
+  const updateUnderConstruction = (value) => {
+    setSettings((prev) => {
+      const updated = { ...prev, underConstruction: Boolean(value) };
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error("Failed to save settings to localStorage:", err);
+      }
+      fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ underConstruction: Boolean(value) }),
+      }).catch((e) => console.log("Settings API sync note:", e));
+      return updated;
+    });
+  };
+
   const isArtGalleryEnabled = settings?.visibility?.artGallery ?? true;
   const isWorkshopEnabled = settings?.visibility?.workshop ?? true;
+  const isUnderConstruction = settings?.underConstruction ?? false;
 
   return (
     <SettingsContext.Provider
@@ -109,6 +129,8 @@ export function SettingsProvider({ children }) {
         updateVisibility,
         isArtGalleryEnabled,
         isWorkshopEnabled,
+        isUnderConstruction,
+        updateUnderConstruction,
       }}
     >
       {children}
