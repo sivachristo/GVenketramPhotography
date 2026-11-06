@@ -39,8 +39,7 @@ export async function GET() {
             settings: cachedSettings,
             source: "supabase",
           });
-          // Keep the cookie in sync so middleware can read it without a fetch
-          res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+          res.cookies.delete(COOKIE_NAME);
           return res;
         }
       } catch (err) {
@@ -53,7 +52,7 @@ export async function GET() {
       settings: cachedSettings,
       source: "memory",
     });
-    res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+    res.cookies.delete(COOKIE_NAME);
     return res;
   } catch (error) {
     console.error("Error fetching settings:", error);
@@ -117,13 +116,13 @@ export async function POST(request) {
     revalidatePath("/", "layout");
     revalidatePath("/admin");
 
-    // Set cookie so middleware can read under-construction state instantly (no fetch needed)
+    // Return response and ensure any stale construction cookie is deleted
     const res = NextResponse.json({
       success: true,
       message: "Settings updated successfully",
       settings: cachedSettings,
     });
-    res.cookies.set(COOKIE_NAME, cachedSettings.underConstruction ? "1" : "0", COOKIE_OPTS);
+    res.cookies.delete(COOKIE_NAME);
     return res;
   } catch (error) {
     console.error("Error updating settings:", error);

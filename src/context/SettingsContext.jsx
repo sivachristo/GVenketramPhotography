@@ -27,6 +27,10 @@ export function SettingsProvider({ children }) {
         setSettings((prev) => ({
           ...prev,
           ...parsed,
+          underConstruction:
+            parsed.underConstruction !== undefined
+              ? Boolean(parsed.underConstruction)
+              : prev.underConstruction,
           visibility: {
             ...prev.visibility,
             ...(parsed.visibility || {}),
@@ -49,6 +53,10 @@ export function SettingsProvider({ children }) {
             const merged = {
               ...prev,
               ...data.settings,
+              underConstruction:
+                data.settings.underConstruction !== undefined
+                  ? Boolean(data.settings.underConstruction)
+                  : prev.underConstruction,
               visibility: {
                 ...prev.visibility,
                 ...(data.settings.visibility || {}),
