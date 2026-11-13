@@ -177,81 +177,159 @@ export async function compressImageClient(file, maxDimension = 4096, quality = 0
   });
 }
 
+const HERO_TARGET_BYTES = 9 * 1024 * 1024;
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
 /**
- * Uploads a single file:
- * 1. Uploads original file directly via /api/upload to Cloudinary (Sharp handles server compression once)
- * 2. Falls back to direct Supabase Storage with client compression if API upload is unreachable
+ * Every hero image is encoded to 9 MB. Quality and dimensions are adjusted
+ * until the file lands on that size without going over it.
  */
-export async function uploadSingleImage(file, { signal, bucket = "portfolio-images" } = {}) {
-  const formattedTitle = formatTitleFromFilename(file.name);
-
-  // 1. Primary: Server API Upload (Routes to Cloudinary 25 GB Free Storage)
+export async function prepareHeroImage(file) {
+  const name = file.name || "hero.jpg";
+  const objectUrl = URL.createObjectURL(file);
   try {
-    const formData = new FormData();
-    formData.append("files", file, file.name);
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-      signal,
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("Could not read this image. Use a standard RGB JPEG, PNG, or WebP."));
+      image.src = objectUrl;
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      const fileResult = (data.files && data.files[0]) || data;
+    const longest = Math.max(img.width, img.height);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
-      if (fileResult && fileResult.src) {
-        return {
-          success: true,
-          src: fileResult.src,
-          title: formattedTitle,
-          originalName: file.name,
-          width: fileResult.width,
-          height: fileResult.height,
-          storage: fileResult.storage || "cloudinary",
-        };
+    const encode = async (edge, quality) => {
+      const scale = Math.min(1, edge / longest);
+      const width = Math.max(1, Math.round(img.width * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvasToBlob(canvas, "image/jpeg", quality);
+    };
+
+    let edge = Math.min(longest, 12000);
+    let best = null;
+
+    const keep = (blob) => {
+      if (blob && blob.size <= HERO_TARGET_BYTES && (!best || blob.size > best.size)) {
+        best = blob;
       }
-    } else {
-      console.warn(`API upload returned status ${res.status}, falling back to Supabase direct upload.`);
-    }
-  } catch (apiErr) {
-    console.warn("API upload exception, falling back to Supabase direct upload:", apiErr);
-  }
+    };
 
-  // 2. Fallback: Direct Supabase Storage Upload (Client compression used only as fallback)
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { blob, width, height, uniqueFilename } = await compressImageClient(file);
-      const { data: uploadResult, error: uploadErr } = await supabase.storage
-        .from(bucket)
-        .upload(uniqueFilename, blob, {
-          contentType: blob.type || "image/webp",
-          upsert: true,
-        });
+    while (edge >= 1200) {
+      const smallest = await encode(edge, 0.4);
+      if (smallest && smallest.size > HERO_TARGET_BYTES) {
+        edge = Math.round(edge * 0.86);
+        continue;
+      }
 
-      if (!uploadErr && uploadResult) {
-        const { data: urlData } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(uniqueFilename);
-
-        if (urlData && urlData.publicUrl) {
-          return {
-            success: true,
-            src: urlData.publicUrl,
-            title: formattedTitle,
-            originalName: file.name,
-            width,
-            height,
-            storage: "supabase",
-          };
+      let low = 0.4;
+      let high = 0.98;
+      for (let i = 0; i < 10; i++) {
+        const quality = (low + high) / 2;
+        const blob = await encode(edge, quality);
+        if (!blob || blob.size > HERO_TARGET_BYTES) {
+          high = quality;
+        } else {
+          low = quality;
+          keep(blob);
         }
       }
-    } catch (directErr) {
-      console.error("Supabase direct upload exception:", directErr);
+      break;
     }
+
+    canvas.width = 0;
+    canvas.height = 0;
+
+    if (!best) {
+      throw new Error("Could not compress this hero image to 9 MB.");
+    }
+
+    const base = name.replace(/\.[^.]+$/, "") || "hero";
+    return new File([best], `${base}.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/**
+ * Sends a hero file directly to Cloudinary. The Next.js upload route is capped
+ * near 4.5 MB, which would force a heavier compress than the 9 MB target.
+ */
+export async function uploadHeroImage(file) {
+  const payload = await prepareHeroImage(file);
+  const signRes = await fetch("/api/admin/cloudinary-sign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder: "hero" }),
+  });
+  const sign = await signRes.json().catch(() => ({}));
+  if (!signRes.ok || !sign.signature) {
+    throw new Error(sign.error || "Could not start the Cloudinary upload.");
   }
 
-  throw new Error("Failed to upload image to Cloudinary or Supabase.");
+  const body = new FormData();
+  body.append("file", payload, payload.name);
+  body.append("api_key", sign.apiKey);
+  body.append("timestamp", String(sign.timestamp));
+  body.append("signature", sign.signature);
+  body.append("folder", sign.folder);
+
+  const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, {
+    method: "POST",
+    body,
+  });
+  const data = await uploadRes.json().catch(() => ({}));
+  if (!uploadRes.ok || !data.secure_url) {
+    throw new Error(data?.error?.message || "Cloudinary rejected this hero image.");
+  }
+  return data.secure_url;
+}
+
+/**
+ * Uploads a single file directly via /api/upload to Cloudinary (Sharp handles server compression).
+ * Direct Supabase storage binary upload is disabled to protect the 1 GB quota limit.
+ */
+export async function uploadSingleImage(file, { signal } = {}) {
+  const formattedTitle = formatTitleFromFilename(file.name);
+
+  const formData = new FormData();
+  formData.append("files", file, file.name);
+
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+    signal,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
+  const fileResult = (data.files && data.files[0]) || data;
+
+  if (!fileResult || !fileResult.src) {
+    throw new Error(data.error || "Upload failed: Server did not return a valid image URL");
+  }
+
+  return {
+    success: true,
+    src: fileResult.src,
+    title: formattedTitle,
+    originalName: file.name,
+    width: fileResult.width,
+    height: fileResult.height,
+    storage: fileResult.storage || "cloudinary",
+  };
 }
 
 /**

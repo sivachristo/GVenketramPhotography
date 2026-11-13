@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { uploadHeroImage } from "@/lib/clientUpload";
 import {
   Upload,
   Plus,
@@ -108,6 +109,8 @@ export default function MainImagesManager() {
     setPreviewUrl(img.src || "");
   };
 
+  const uploadSelectedFile = async (file) => uploadHeroImage(file);
+
   const handleSaveAdd = async (e) => {
     e.preventDefault();
     try {
@@ -115,17 +118,7 @@ export default function MainImagesManager() {
       let finalSrc = formData.src;
 
       if (selectedFile) {
-        const uploadBody = new FormData();
-        uploadBody.append("file", selectedFile);
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadBody,
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.src) {
-          throw new Error(uploadData.error || "File upload failed");
-        }
-        finalSrc = uploadData.src;
+        finalSrc = await uploadSelectedFile(selectedFile);
       }
 
       if (!finalSrc) {
@@ -168,17 +161,7 @@ export default function MainImagesManager() {
       let finalSrc = formData.src;
 
       if (selectedFile) {
-        const uploadBody = new FormData();
-        uploadBody.append("file", selectedFile);
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadBody,
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok || !uploadData.src) {
-          throw new Error(uploadData.error || "File upload failed");
-        }
-        finalSrc = uploadData.src;
+        finalSrc = await uploadSelectedFile(selectedFile);
       }
 
       const res = await fetch("/api/main-images", {
@@ -518,7 +501,7 @@ export default function MainImagesManager() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -545,7 +528,7 @@ export default function MainImagesManager() {
                         Click to upload an image from device
                       </p>
                       <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
-                        Converts automatically to optimized WebP
+                        Saved at 9 MB.
                       </p>
                     </>
                   )}
@@ -694,7 +677,7 @@ export default function MainImagesManager() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
