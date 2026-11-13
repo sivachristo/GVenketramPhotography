@@ -13,9 +13,19 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
   const { cartCount, toggleCart } = useCart();
   const { isArtGalleryEnabled, isWorkshopEnabled, isLoaded } = useSettings();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -43,38 +53,39 @@ export default function Navbar() {
   ];
 
   const isHome = pathname === "/";
+  const isTransparent = isHome && !isScrolled;
 
-  const headerClass = isHome
-    ? "absolute top-0 z-40 w-full border-b border-transparent bg-transparent"
-    : "sticky top-0 z-40 w-full border-b border-[#d8d3c5] bg-[#E2DDD3]";
+  const headerClass = isTransparent
+    ? "absolute top-0 z-40 w-full border-b border-transparent bg-transparent transition-all duration-300"
+    : "sticky top-0 z-40 w-full border-b border-[#d8d3c5] bg-[#E2DDD3] transition-all duration-300 shadow-xs";
 
-  const logoTextClass = isHome
+  const logoTextClass = isTransparent
     ? "font-brand text-sm sm:text-base font-normal tracking-[0.14em] text-[#F8F5F1] group-hover:text-white transition-colors duration-300"
     : "font-brand text-sm sm:text-base font-normal tracking-[0.14em] text-neutral-800 group-hover:text-black transition-colors duration-300";
 
-  const logoSubTextClass = isHome
+  const logoSubTextClass = isTransparent
     ? "ml-1.5 font-sans text-[7.5px] sm:text-[9px] tracking-[0.25em] text-[#F8F5F1]/80 group-hover:text-white transition-colors duration-300 font-light inline"
     : "ml-1.5 font-sans text-[7.5px] sm:text-[9px] tracking-[0.25em] text-neutral-500 group-hover:text-black transition-colors duration-300 font-light inline";
 
-  const socialsClass = isHome
+  const socialsClass = isTransparent
     ? "hidden md:flex items-center space-x-4 text-[#F8F5F1]/75"
     : "hidden md:flex items-center space-x-4 text-neutral-500";
 
-  const socialLinkHoverClass = isHome
+  const socialLinkHoverClass = isTransparent
     ? "hover:text-white transition-colors duration-300"
     : "hover:text-black transition-colors duration-300";
 
-  const mobileMenuButtonClass = isHome
+  const mobileMenuButtonClass = isTransparent
     ? "flex items-center justify-center p-2 text-[#F8F5F1]/85 hover:text-white md:hidden transition-colors duration-300 cursor-pointer"
     : "flex items-center justify-center p-2 text-neutral-500 hover:text-black md:hidden transition-colors duration-300 cursor-pointer";
 
-  const cartButtonClass = isHome
+  const cartButtonClass = isTransparent
     ? "relative flex items-center justify-center p-2 text-[#F8F5F1]/85 hover:text-white transition-colors duration-300 cursor-pointer"
     : "relative flex items-center justify-center p-2 text-neutral-600 hover:text-black transition-colors duration-300 cursor-pointer";
 
   const getNavLinkClass = (linkHref) => {
     const isActive = pathname === linkHref || (linkHref !== "/" && pathname.startsWith(linkHref));
-    if (isHome) {
+    if (isTransparent) {
       return `text-xs uppercase tracking-[0.2em] transition-colors duration-300 hover:text-white ${isActive ? "text-white font-semibold text-shadow-editorial" : "text-[#F8F5F1]/75 font-medium"
         }`;
     } else {

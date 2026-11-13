@@ -83,3 +83,56 @@ html.hero-scrollbar-hidden {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
+/* Lightbox Image Preview - seamless styling matching the header background #E2DDD3 */
+.yarl__portal {
+  --yarl__color_backdrop: #E2DDD3;
+  --yarl__container_background_color: #E2DDD3;
+  --yarl__color_button: #1c1a17;
+  --yarl__color_button_active: #000000;
+  --yarl__color_button_disabled: rgba(28, 26, 23, 0.25);
+  --yarl__button_filter: none;
+  --yarl__toolbar_padding: 24px;
+  --yarl__navigation_button_padding: 20px;
+}
+
+.yarl__container {
+  background-color: #E2DDD3 !important;
+}
+
+.yarl__button {
+  color: #1c1a17 !important;
+  filter: none !important;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.yarl__button:hover {
+  color: #000000 !important;
+  background-color: rgba(28, 26, 23, 0.08);
+}
+
+.yarl__navigation_prev,
+.yarl__navigation_next {
+  color: #1c1a17 !important;
+  filter: none !important;
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.yarl__navigation_prev:hover,
+.yarl__navigation_next:hover {
+  color: #000000 !important;
+  background-color: rgba(28, 26, 23, 0.08);
+  border-radius: 9999px;
+}
+
+.yarl__slide_image {
+  box-shadow: 0 20px 45px -15px rgba(28, 26, 23, 0.16), 0 4px 12px -2px rgba(28, 26, 23, 0.08);
+  border-radius: 4px;
+}
+
+/* Hide YARL default SVG daisy spinner */
+.yarl__slide_loading {
+  display: none !important;
+}
+
+

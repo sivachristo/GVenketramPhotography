@@ -375,8 +375,14 @@ export default function ArtworkDetailPage({ params }) {
         open={isLightboxOpen}
         close={() => setIsLightboxOpen(false)}
         slides={[{ src: activeArt.image, title: activeArt.title }]}
+        controller={{ closeOnBackdropClick: true }}
+        render={{
+          iconLoading: () => (
+            <div className="w-8 h-8 rounded-full border-[1.5px] border-[#1c1a17]/15 border-t-[#1c1a17] animate-spin" />
+          ),
+        }}
         styles={{
-          container: { backgroundColor: "rgba(28, 26, 23, 0.96)" },
+          container: { backgroundColor: "#E2DDD3" },
         }}
       />
     </div>

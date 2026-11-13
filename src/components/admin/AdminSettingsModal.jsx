@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle } from "lucide-react";
+import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle, Download } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function AdminSettingsModal({ isOpen, onClose }) {
@@ -41,7 +41,7 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
       const res = await fetch("/api/admin/migrate-to-cloudinary", { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) {
-        setMigrationStatus(`Successfully processed images! Migrated: ${data.stats.portfolioUploaded + data.stats.artUploaded}, Skipped: ${data.stats.portfolioSkipped + data.stats.artSkipped}`);
+        setMigrationStatus(`Successfully processed images! Migrated: ${data.stats.portfolioUploaded + data.stats.artUploaded}, Orphans purged: ${data.stats.orphansRemoved || 0}, Skipped: ${data.stats.portfolioSkipped + data.stats.artSkipped}`);
         fetchStats();
       } else {
         setMigrationStatus(`Migration notice: ${data.error || "Failed to complete migration."}`);
@@ -240,6 +240,51 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           <span className="font-semibold text-neutral-800">{stats.supabase.portfolioRows + stats.supabase.galleryRows} rows</span>
                         </div>
                       </div>
+
+                      {/* DB Backup Download Action */}
+                      <div className="pt-2 border-t border-neutral-100">
+                        <a
+                          href="/api/admin/backup-db?download=true"
+                          download
+                          className="w-full py-1.5 px-3 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-[#1c1a17] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-neutral-200"
+                        >
+                          <Download size={12} className="text-neutral-600" />
+                          <span>Download DB Backup (JSON)</span>
+                        </a>
+                      </div>
+
+                      {/* Migration to Cloudinary to reclaim Supabase Quota */}
+                      {stats.supabase.fileCount > 0 && stats?.cloudinary?.configured && (
+                        <div className="pt-2 border-t border-neutral-100 space-y-2">
+                          <button
+                            type="button"
+                            onClick={handleMigrateToCloudinary}
+                            disabled={migrating}
+                            className="w-full py-2 px-3 rounded-lg bg-[#1c1a17] hover:bg-black text-[#f5f2eb] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-60 shadow-xs"
+                          >
+                            {migrating ? (
+                              <>
+                                <RefreshCw size={12} className="animate-spin text-[#A97C5B]" />
+                                <span>Migrating images to Cloudinary...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Cloud size={13} className="text-[#A97C5B]" />
+                                <span>Free Supabase Quota: Migrate to Cloudinary</span>
+                              </>
+                            )}
+                          </button>
+                          <p className="text-[10px] text-neutral-500 text-center">
+                            Moves stored image files to Cloudinary (25 GB vault) and clears Supabase bucket.
+                          </p>
+                        </div>
+                      )}
+
+                      {migrationStatus && (
+                        <div className="text-[11px] text-neutral-800 bg-[#f5f2eb] p-2.5 rounded-lg border border-[#e6e2d8]">
+                          {migrationStatus}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">

@@ -11,26 +11,37 @@ import { ChevronRight } from "lucide-react";
 
 // Custom Render Image component: clean grid of photos, metadata shown as a premium hover overlay
 function CustomRenderImage({ photo, width, height, showCategoryTag: showCategoryTagProp, ...props }) {
+  const [isImgLoaded, setIsImgLoaded] = useState(false);
   const showCategoryTag = showCategoryTagProp !== false;
 
   return (
     <div 
       onClick={props.onClick}
-      className="relative overflow-hidden rounded-lg group bg-[#faf8f5] border border-[#e6e2d8]/60 shadow-sm cursor-pointer aspect-auto"
+      className="relative overflow-hidden rounded-lg group bg-[#E2DDD3]/60 border border-[#d8d3c5]/70 shadow-sm cursor-pointer aspect-auto"
     >
+      {/* Luxury Minimalist Loading Placeholder */}
+      {!isImgLoaded && (
+        <div className="absolute inset-0 bg-[#E2DDD3] animate-pulse flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full border-[1.5px] border-[#1c1a17]/20 border-t-[#1c1a17] animate-spin" />
+        </div>
+      )}
+
       <Image
         src={photo?.src || ""}
         alt={photo?.alt || photo?.title || ""}
         width={width || 1200}
         height={height || 800}
         sizes={props.sizes}
+        onLoad={() => setIsImgLoaded(true)}
         style={{
           ...props.style,
           width: "100%",
           height: "auto",
           display: "block",
         }}
-        className={`${props.className || ""} transition-all duration-700 ease-out group-hover:scale-105 filter brightness-[0.98] group-hover:brightness-100`}
+        className={`${props.className || ""} transition-all duration-700 ease-out group-hover:scale-105 filter brightness-[0.98] group-hover:brightness-100 ${
+          isImgLoaded ? "opacity-100" : "opacity-0"
+        }`}
       />
       {/* Premium Warm Beige Overlay on Hover (matching the beige theme, clean layout style) */}
       <div className="absolute inset-0 bg-[#f5f2eb]/90 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6 pointer-events-none">
@@ -215,8 +226,14 @@ export default function Gallery({ initialCategory = "All", categories, allImages
           width: photo.width,
           height: photo.height,
         }))}
+        controller={{ closeOnBackdropClick: true }}
+        render={{
+          iconLoading: () => (
+            <div className="w-8 h-8 rounded-full border-[1.5px] border-[#1c1a17]/15 border-t-[#1c1a17] animate-spin" />
+          ),
+        }}
         styles={{
-          container: { backgroundColor: "rgba(28, 26, 23, 0.98)" },
+          container: { backgroundColor: "#E2DDD3" },
         }}
       />
     </div>

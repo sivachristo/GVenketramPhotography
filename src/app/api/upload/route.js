@@ -28,7 +28,8 @@ async function compressToWebP(file) {
     .replace(/^-|-$/g, "");
   const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${baseName}.webp`;
 
-  const { data: webpBuffer, info } = await sharp(inputBuffer, { limitInputPixels: false })
+  const { data: webpBuffer, info } = await sharp(inputBuffer, { limitInputPixels: false, failOn: "none" })
+    .rotate()
     .resize({
       width: 2560,
       height: 2560,
@@ -52,7 +53,8 @@ async function processSingleFile(file) {
   // --- Compress to WebP first ---
   const { buffer, width, height, uniqueFilename } = await compressToWebP(file);
 
-  // 1. Prioritize Cloudinary Upload (25 GB Free Storage)
+  // 1. Mandatory Cloudinary Upload (25 GB Free Storage Vault)
+  // We do not store media binaries in Supabase Storage to protect the 1 GB quota limit.
   if (isCloudinaryConfigured) {
     try {
       const cRes = await uploadToCloudinary(buffer, "portfolio");
@@ -67,75 +69,12 @@ async function processSingleFile(file) {
         storage: "cloudinary",
       };
     } catch (cErr) {
-      console.error("Cloudinary upload failed, falling back to Supabase:", cErr.message);
+      console.error("Cloudinary upload failed:", cErr.message);
+      throw new Error(`Cloudinary upload failed: ${cErr.message}`);
     }
   }
 
-  // 2. Supabase Storage upload (fallback if Cloudinary is not configured)
-  if (isSupabaseConfigured && supabase) {
-    try {
-      // Enforce strict 900 MB safety limit
-      const quota = await verifySupabaseQuota(buffer.length);
-      if (!quota.allowed) {
-        throw new Error(
-          `Supabase Storage 900 MB safety limit reached (${quota.currentMB} MB / 900 MB). Upload diverted.`
-        );
-      }
-
-      const { data: uploadResult, error: uploadErr } = await supabase.storage
-        .from("portfolio-images")
-        .upload(uniqueFilename, buffer, {
-          contentType: "image/webp",
-          upsert: true,
-        });
-
-      if (uploadErr) {
-        console.error("=== SUPABASE UPLOAD ERROR OBJECT ===");
-        console.error("uploadErr:", uploadErr);
-        throw new Error(`Supabase Storage error for ${file.name}: ${uploadErr.message}`);
-      }
-
-      if (uploadResult) {
-        const { data: urlData } = supabase.storage
-          .from("portfolio-images")
-          .getPublicUrl(uniqueFilename);
-
-        if (urlData && urlData.publicUrl) {
-          return {
-            success: true,
-            src: urlData.publicUrl,
-            url: urlData.publicUrl,
-            title: formattedTitle,
-            originalName: file.name,
-            width,
-            height,
-            storage: "supabase",
-          };
-        }
-      }
-    } catch (err) {
-      console.error("=== SUPABASE UPLOAD CAUGHT EXCEPTION ===");
-      console.error("err.name:", err.name);
-      console.error("err.message:", err.message);
-      console.error("err.stack:", err.stack);
-      console.error("err.cause:", err.cause);
-      console.error("err.cause?.code:", err.cause?.code);
-      console.error("err.cause?.message:", err.cause?.message);
-
-      const customErr = new Error(err.message);
-      customErr.name = err.name;
-      customErr.cause = err.cause;
-      customErr.details = {
-        name: err.name,
-        message: err.message,
-        causeCode: err.cause?.code,
-        causeMessage: err.cause?.message,
-        causeName: err.cause?.name,
-        stack: err.stack,
-      };
-      throw customErr;
-    }
-  }
+  throw new Error("Cloudinary credentials are not configured in .env.local. Uploads to Supabase Storage are disabled to prevent quota exhaustion.");
 
   // 2. Local filesystem fallback (also saves compressed WebP)
   const uploadsDir = path.join(process.cwd(), "public", "uploads");

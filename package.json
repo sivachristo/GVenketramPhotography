@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "backup:db": "node scripts/backup-supabase-db.js",
+    "backup:images": "node scripts/backup-images.js",
     "migrate:portfolio": "node scripts/migrate-portfolio-to-supabase.js",
     "migrate:cloudinary": "node scripts/migrate-supabase-to-cloudinary.js"
   },
