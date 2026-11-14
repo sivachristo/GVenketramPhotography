@@ -1,11 +1,7 @@
-import fs from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { uploadToCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
-import { verifySupabaseQuota } from "@/lib/storageGuard";
+import { uploadToCloudinary, isCloudinaryConfigured, compressBufferForCloudinary, CLOUDINARY_MAX_UPLOAD_BYTES } from "@/lib/cloudinary";
+import { assertSupabaseUploadAllowed } from "@/lib/storageGuard";
 import { formatTitleFromFilename } from "@/utils/formatTitle";
-import sharp from "sharp";
 
 
 /**
@@ -28,21 +24,15 @@ async function compressToWebP(file) {
     .replace(/^-|-$/g, "");
   const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${baseName}.webp`;
 
-  const { data: webpBuffer, info } = await sharp(inputBuffer, { limitInputPixels: false, failOn: "none" })
-    .rotate()
-    .resize({
-      width: 2560,
-      height: 2560,
-      fit: "inside",            // shrink proportionally, never crop
-      withoutEnlargement: true, // don't upscale small images
-    })
-    .webp({ quality: 80 })
-    .toBuffer({ resolveWithObject: true }); // returns { data, info } with real output dimensions
+  let { buffer, width, height } = await compressBufferForCloudinary(inputBuffer);
+  if (buffer.length > CLOUDINARY_MAX_UPLOAD_BYTES) {
+    throw new Error("Compressed image is still over Cloudinary's 10 MB limit. It was not saved to Supabase.");
+  }
 
   return {
-    buffer: webpBuffer,
-    width: info.width,
-    height: info.height,
+    buffer,
+    width,
+    height,
     uniqueFilename,
   };
 }
@@ -51,50 +41,40 @@ async function processSingleFile(file) {
   const formattedTitle = formatTitleFromFilename(file.name);
 
   // --- Compress to WebP first ---
-  const { buffer, width, height, uniqueFilename } = await compressToWebP(file);
+  const { buffer, width, height } = await compressToWebP(file);
 
-  // 1. Mandatory Cloudinary Upload (25 GB Free Storage Vault)
-  // We do not store media binaries in Supabase Storage to protect the 1 GB quota limit.
-  if (isCloudinaryConfigured) {
-    try {
-      const cRes = await uploadToCloudinary(buffer, "portfolio");
-      return {
-        success: true,
-        src: cRes.secure_url,
-        url: cRes.secure_url,
-        title: formattedTitle,
-        originalName: file.name,
-        width: cRes.width || width,
-        height: cRes.height || height,
-        storage: "cloudinary",
-      };
-    } catch (cErr) {
-      console.error("Cloudinary upload failed:", cErr.message);
-      throw new Error(`Cloudinary upload failed: ${cErr.message}`);
-    }
-  }
-
-  throw new Error("Cloudinary credentials are not configured in .env.local. Uploads to Supabase Storage are disabled to prevent quota exhaustion.");
-
-  // 2. Local filesystem fallback (also saves compressed WebP)
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  const filePath = path.join(uploadsDir, uniqueFilename);
-  fs.writeFileSync(filePath, buffer);
-
-  return {
-    success: true,
-    src: `/uploads/${uniqueFilename}`,
-    url: `/uploads/${uniqueFilename}`,
+  const stored = {
     title: formattedTitle,
     originalName: file.name,
     width,
     height,
-    storage: "local",
   };
+
+  if (!isCloudinaryConfigured) {
+    await assertSupabaseUploadAllowed(buffer.length);
+  }
+
+  try {
+    const cRes = await uploadToCloudinary(buffer, "portfolio");
+    return {
+      success: true,
+      src: cRes.secure_url,
+      url: cRes.secure_url,
+      ...stored,
+      width: cRes.width || width,
+      height: cRes.height || height,
+      storage: "cloudinary",
+    };
+  } catch (cErr) {
+    console.error("Cloudinary upload failed:", cErr.message);
+    try {
+      await assertSupabaseUploadAllowed(buffer.length);
+    } catch (quotaErr) {
+      const error = new Error(`${quotaErr.message} Cloudinary error: ${cErr.message}`);
+      error.status = quotaErr.status || 507;
+      throw error;
+    }
+  }
 }
 
 export async function POST(request) {
@@ -135,7 +115,7 @@ export async function POST(request) {
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
-        error: "Upload failed: " + error.message,
+        error: error.message || "Upload failed",
         ...(isProd ? {} : {
           details: error.details || {
             name: error.name,
@@ -147,7 +127,7 @@ export async function POST(request) {
           },
         }),
       },
-      { status: 500 }
+      { status: error.status || 500 }
     );
   }
 }

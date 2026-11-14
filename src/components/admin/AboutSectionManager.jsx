@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { uploadSingleImage } from "@/lib/clientUpload";
 import Link from "next/link";
 import {
   Upload,
@@ -112,22 +113,10 @@ export default function AboutSectionManager() {
 
     try {
       setIsUploading(true);
-      const uploadData = new FormData();
-      uploadData.append("file", file);
+      const uploaded = await uploadSingleImage(file, { folder: "about" });
+      const uploadedUrl = uploaded.src;
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadData,
-      });
-
-      const data = await res.json();
-      const uploadedUrl =
-        data.url ||
-        data.src ||
-        data.imageUrl ||
-        (data.files && data.files[0] && (data.files[0].url || data.files[0].src));
-
-      if (res.ok && (data.success || uploadedUrl) && uploadedUrl) {
+      if (uploadedUrl) {
         const updated = {
           ...formData,
           imageUrl: uploadedUrl,
@@ -155,7 +144,7 @@ export default function AboutSectionManager() {
 
         showToast("Portrait image uploaded! Click 'Save Changes' to publish.", "success");
       } else {
-        throw new Error(data.error || "Image upload failed");
+        throw new Error("Image upload failed");
       }
     } catch (err) {
       console.error("Upload error:", err);

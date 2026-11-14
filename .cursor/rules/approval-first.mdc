@@ -1,0 +1,16 @@
+---
+description: Tell the user the plan, recommend an option, and wait for approval before changing anything
+alwaysApply: true
+---
+
+# Approval before work
+
+Before editing files, running commands that change data, migrating, deploying, or deleting anything:
+
+1. Tell the user what you found and what you intend to do.
+2. Offer the realistic alternatives, with one recommendation and why.
+3. Wait for an explicit approval. Do not start that work in the same turn.
+
+A direct question can be answered immediately. Reading code to answer a question is fine. Do not treat silence, an earlier similar task, or a screenshot as approval.
+
+Example: storage is over the cap. Say so, recommend compressing and moving the files to Cloudinary, mention leaving them or deleting them as alternatives, then wait. Do not move or delete files until the user agrees.

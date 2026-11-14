@@ -122,7 +122,7 @@ export default function ArtworkModal({
 
       if (selectedFile) {
         setStatusText("Uploading Image...");
-        const uploadResult = await uploadSingleImage(selectedFile, { signal });
+        const uploadResult = await uploadSingleImage(selectedFile, { signal, folder: "art_gallery" });
         if (uploadResult?.src) {
           imageUrl = uploadResult.src;
         }

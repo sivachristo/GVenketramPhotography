@@ -1,4 +1,3 @@
-import { supabase, isSupabaseConfigured } from "./supabase";
 import { formatTitleFromFilename } from "../utils/formatTitle";
 
 export { formatTitleFromFilename };
@@ -294,41 +293,63 @@ export async function uploadHeroImage(file) {
 }
 
 /**
- * Uploads a single file directly via /api/upload to Cloudinary (Sharp handles server compression).
- * Direct Supabase storage binary upload is disabled to protect the 1 GB quota limit.
+ * Uploads one image straight to Cloudinary.
+ * The file never passes through Supabase Storage. The 900 MB safety limit
+ * is enforced on the server only for a Supabase write, which this path does not do.
  */
-export async function uploadSingleImage(file, { signal } = {}) {
+export async function uploadSingleImage(file, { signal, folder = "portfolio" } = {}) {
   const formattedTitle = formatTitleFromFilename(file.name);
-
-  const formData = new FormData();
-  formData.append("files", file, file.name);
-
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-    signal,
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+  const cloudinaryLimit = 9.5 * 1024 * 1024;
+  let edge = 2560;
+  let quality = 0.8;
+  let compressed = await compressImageClient(file, edge, quality);
+  while (compressed.blob.size > cloudinaryLimit && edge > 1200) {
+    quality = Math.max(0.5, quality - 0.1);
+    edge = Math.round(edge * 0.85);
+    compressed = await compressImageClient(file, edge, quality);
+  }
+  if (compressed.blob.size > 10 * 1024 * 1024) {
+    throw new Error(
+      "This image is still over Cloudinary's 10 MB upload limit after compression. It was not saved to Supabase."
+    );
   }
 
-  const data = await res.json();
-  const fileResult = (data.files && data.files[0]) || data;
+  const signRes = await fetch("/api/admin/cloudinary-sign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder }),
+    signal,
+  });
+  const sign = await signRes.json().catch(() => ({}));
+  if (!signRes.ok || !sign.signature) {
+    throw new Error(sign.error || "Could not start the Cloudinary upload.");
+  }
 
-  if (!fileResult || !fileResult.src) {
-    throw new Error(data.error || "Upload failed: Server did not return a valid image URL");
+  const body = new FormData();
+  body.append("file", compressed.blob, compressed.uniqueFilename);
+  body.append("api_key", sign.apiKey);
+  body.append("timestamp", String(sign.timestamp));
+  body.append("signature", sign.signature);
+  body.append("folder", sign.folder);
+
+  const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`, {
+    method: "POST",
+    body,
+    signal,
+  });
+  const data = await uploadRes.json().catch(() => ({}));
+  if (!uploadRes.ok || !data.secure_url) {
+    throw new Error(data?.error?.message || "Cloudinary rejected this image. It was not saved to Supabase.");
   }
 
   return {
     success: true,
-    src: fileResult.src,
+    src: data.secure_url,
     title: formattedTitle,
     originalName: file.name,
-    width: fileResult.width,
-    height: fileResult.height,
-    storage: fileResult.storage || "cloudinary",
+    width: data.width || compressed.width,
+    height: data.height || compressed.height,
+    storage: "cloudinary",
   };
 }
 
@@ -361,7 +382,8 @@ export async function uploadMultipleImages(files, {
     }
 
     try {
-      const uploaded = await uploadSingleImage(file, { signal, bucket });
+      const folder = bucket === "artworks" ? "art_gallery" : "portfolio";
+      const uploaded = await uploadSingleImage(file, { signal, folder });
       successful.push(uploaded);
       if (onItemComplete) {
         onItemComplete(i, file, uploaded);

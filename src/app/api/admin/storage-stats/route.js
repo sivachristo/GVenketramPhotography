@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { listSupabaseStorageFiles, SUPABASE_SAFETY_LIMIT_MB } from "@/lib/storageGuard";
 
 export async function GET() {
   let cloudinaryStats = null;
@@ -41,29 +42,8 @@ export async function GET() {
   // 2. Fetch Supabase Bucket & DB Stats
   if (isSupabaseConfigured && supabase) {
     try {
-      // List all objects in portfolio-images bucket recursively
-      async function listAllFiles(prefix = "") {
-        let allFiles = [];
-        const { data, error } = await supabase.storage.from("portfolio-images").list(prefix, { limit: 1000 });
-        if (error || !data) return allFiles;
-
-        for (const item of data) {
-          const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
-          if (!item.id && (!item.metadata || Object.keys(item.metadata).length === 0)) {
-            const subFiles = await listAllFiles(itemPath);
-            allFiles = allFiles.concat(subFiles);
-          } else {
-            allFiles.push({ ...item, fullPath: itemPath });
-          }
-        }
-        return allFiles;
-      }
-
-      const files = await listAllFiles();
-      let totalBytes = 0;
-      files.forEach((f) => {
-        totalBytes += f.metadata?.size || f.size || 0;
-      });
+      const files = await listSupabaseStorageFiles();
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
 
       const { count: portfolioCount } = await supabase
         .from("portfolio_images")
@@ -78,7 +58,7 @@ export async function GET() {
         .select("*", { count: "exact", head: true });
 
       const storageMB = +(totalBytes / (1024 * 1024)).toFixed(2);
-      const safetyLimitMB = 900;
+      const safetyLimitMB = SUPABASE_SAFETY_LIMIT_MB;
       const safetyLimitPercent = +((storageMB / safetyLimitMB) * 100).toFixed(1);
 
       supabaseStats = {

@@ -36,16 +36,39 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
       return;
     }
     setMigrating(true);
-    setMigrationStatus(null);
+    setMigrationStatus("Starting migration...");
     try {
-      const res = await fetch("/api/admin/migrate-to-cloudinary", { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMigrationStatus(`Successfully processed images! Migrated: ${data.stats.portfolioUploaded + data.stats.artUploaded}, Orphans purged: ${data.stats.orphansRemoved || 0}, Skipped: ${data.stats.portfolioSkipped + data.stats.artSkipped}`);
-        fetchStats();
-      } else {
-        setMigrationStatus(`Migration notice: ${data.error || "Failed to complete migration."}`);
+      let phase = "portfolio";
+      let failedIds = [];
+      let migrated = 0;
+      let orphans = 0;
+      let errors = 0;
+      let rounds = 0;
+
+      while (phase && rounds < 80) {
+        rounds += 1;
+        const res = await fetch("/api/admin/migrate-to-cloudinary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phase, failedIds }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Failed to complete migration.");
+        }
+        migrated += (data.stats?.portfolioUploaded || 0) + (data.stats?.artUploaded || 0);
+        orphans += data.stats?.orphansRemoved || 0;
+        errors += data.stats?.errors || 0;
+        failedIds = data.failedIds || failedIds;
+        setMigrationStatus(`Moved ${migrated} image(s) to Cloudinary. Cleared ${orphans} Supabase file(s).`);
+        if (data.done) break;
+        phase = data.nextPhase;
       }
+
+      setMigrationStatus(
+        `Finished. Moved ${migrated} image(s) to Cloudinary, cleared ${orphans} Supabase file(s)${errors ? `, ${errors} could not be moved` : ""}.`
+      );
+      fetchStats();
     } catch (err) {
       setMigrationStatus("Error running migration: " + err.message);
     } finally {
@@ -226,7 +249,7 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           />
                         </div>
                         <p className="text-[10px] text-neutral-400 mt-1">
-                          Hard limit at 900 MB prevents crossing 1 GB Free Tier quota limit.
+                          Hard limit at 900 MB. A Supabase upload past this line is rejected instead of filling the 1 GB free tier. New photos go to Cloudinary.
                         </p>
                       </div>
 
