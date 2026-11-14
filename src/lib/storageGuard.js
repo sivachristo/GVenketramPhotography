@@ -2,6 +2,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const SUPABASE_SAFETY_LIMIT_MB = 900;
 export const SUPABASE_SAFETY_LIMIT_BYTES = 900 * 1024 * 1024; // 943,718,400 bytes
+export const SUPABASE_DATABASE_LIMIT_MB = 400;
+export const SUPABASE_DATABASE_LIMIT_BYTES = 400 * 1024 * 1024;
 
 const BUCKETS = ["portfolio-images", "artworks"];
 const PAGE_SIZE = 100;
@@ -70,6 +72,55 @@ export async function listSupabaseStorageFiles() {
 export async function getSupabaseStorageUsageBytes() {
   const files = await listSupabaseStorageFiles();
   return files.reduce((sum, file) => sum + file.size, 0);
+}
+
+/**
+ * Postgres database size in bytes, from portfolio_database_size_bytes().
+ * Throws when the size cannot be read.
+ */
+export async function getDatabaseSizeBytes() {
+  if (!isSupabaseConfigured || !supabase) return 0;
+  const { data, error } = await supabase.rpc("portfolio_database_size_bytes");
+  if (error) {
+    throw new Error(`Could not measure the database: ${error.message}`);
+  }
+  return Number(data || 0);
+}
+
+/**
+ * Bucket and database measurements against the hard limits.
+ * Image files still go to Cloudinary. These limits only describe Supabase.
+ */
+export async function getSupabaseLimitStatus() {
+  const files = await listSupabaseStorageFiles();
+  const storageBytes = files.reduce((sum, file) => sum + file.size, 0);
+  const storageMB = +(storageBytes / (1024 * 1024)).toFixed(2);
+
+  let databaseBytes = 0;
+  let databaseError = null;
+  try {
+    databaseBytes = await getDatabaseSizeBytes();
+  } catch (err) {
+    databaseError = err.message;
+  }
+  const databaseMB = +(databaseBytes / (1024 * 1024)).toFixed(2);
+  const storageLimitReached = storageMB >= SUPABASE_SAFETY_LIMIT_MB;
+  const databaseLimitReached = !databaseError && databaseMB >= SUPABASE_DATABASE_LIMIT_MB;
+
+  return {
+    files,
+    fileCount: files.length,
+    storageBytes,
+    storageMB,
+    databaseBytes,
+    databaseMB,
+    databaseError,
+    storageLimitMB: SUPABASE_SAFETY_LIMIT_MB,
+    databaseLimitMB: SUPABASE_DATABASE_LIMIT_MB,
+    storageLimitReached,
+    databaseLimitReached,
+    limitReached: storageLimitReached || databaseLimitReached,
+  };
 }
 
 /**

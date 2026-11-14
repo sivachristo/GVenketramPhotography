@@ -303,9 +303,9 @@ export async function uploadSingleImage(file, { signal, folder = "portfolio" } =
   let edge = 2560;
   let quality = 0.8;
   let compressed = await compressImageClient(file, edge, quality);
-  while (compressed.blob.size > cloudinaryLimit && edge > 1200) {
-    quality = Math.max(0.5, quality - 0.1);
-    edge = Math.round(edge * 0.85);
+  while (compressed.blob.size > cloudinaryLimit && edge > 480) {
+    quality = Math.max(0.35, quality - 0.1);
+    edge = Math.round(edge * 0.8);
     compressed = await compressImageClient(file, edge, quality);
   }
   if (compressed.blob.size > 10 * 1024 * 1024) {

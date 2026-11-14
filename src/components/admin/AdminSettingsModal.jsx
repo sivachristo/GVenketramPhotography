@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle, Download } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
@@ -12,6 +12,8 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
   const [error, setError] = useState(null);
   const [migrating, setMigrating] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState(null);
+  const [moveAlert, setMoveAlert] = useState(null);
+  const forcedMoveStarted = useRef(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -31,12 +33,15 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
     }
   };
 
-  const handleMigrateToCloudinary = async () => {
-    if (!window.confirm("Move all remaining images from Supabase Storage to Cloudinary and update database links?")) {
+  const runCloudinaryMove = async ({ forced = false } = {}) => {
+    if (!forced && !window.confirm("Move all remaining images from Supabase Storage to Cloudinary and update database links?")) {
       return;
     }
     setMigrating(true);
-    setMigrationStatus("Starting migration...");
+    setMigrationStatus(forced ? "Supabase limit reached. Moving images and addresses to Cloudinary..." : "Starting migration...");
+    if (forced) {
+      setMoveAlert("Supabase is at its hard limit. Images and their addresses are being moved to Cloudinary.");
+    }
     try {
       let phase = "portfolio";
       let failedIds = [];
@@ -65,22 +70,45 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
         phase = data.nextPhase;
       }
 
-      setMigrationStatus(
-        `Finished. Moved ${migrated} image(s) to Cloudinary, cleared ${orphans} Supabase file(s)${errors ? `, ${errors} could not be moved` : ""}.`
-      );
+      const finished = `Finished. Moved ${migrated} image(s) to Cloudinary, cleared ${orphans} Supabase file(s)${errors ? `, ${errors} could not be moved` : ""}.`;
+      setMigrationStatus(finished);
+      if (forced) {
+        setMoveAlert(
+          errors
+            ? `Supabase limit reached. ${migrated} image address(es) now point at Cloudinary. ${errors} could not be moved.`
+            : "Supabase limit reached. Remaining images and their addresses now live on Cloudinary."
+        );
+      }
       fetchStats();
     } catch (err) {
-      setMigrationStatus("Error running migration: " + err.message);
+      const message = "Error running migration: " + err.message;
+      setMigrationStatus(message);
+      if (forced) setMoveAlert(message);
     } finally {
       setMigrating(false);
     }
   };
 
+  const handleMigrateToCloudinary = () => runCloudinaryMove({ forced: false });
+
   useEffect(() => {
-    if (isOpen) {
-      fetchStats();
+    if (!isOpen) {
+      forcedMoveStarted.current = false;
+      return;
     }
+    fetchStats();
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !stats?.supabase?.limitReached || !stats?.cloudinary?.configured) return;
+    if ((stats.supabase.fileCount || 0) === 0) {
+      setMoveAlert("Supabase is at its hard limit. No image files are left in the bucket. New photos go to Cloudinary.");
+      return;
+    }
+    if (forcedMoveStarted.current || migrating) return;
+    forcedMoveStarted.current = true;
+    runCloudinaryMove({ forced: true });
+  }, [isOpen, stats]);
 
   if (!isOpen) return null;
 
@@ -222,7 +250,7 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           Supabase
                         </div>
                         <div className="text-[10px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 inline-block">
-                          Database & Storage (900 MB Cap)
+                          Database 400 MB · Bucket 900 MB
                         </div>
                       </div>
                     </div>
@@ -230,6 +258,14 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
 
                   {stats?.supabase?.configured ? (
                     <div className="space-y-2.5 pt-1">
+                      {(stats.supabase.limitReached || moveAlert) && (
+                        <div className="flex items-start gap-2 text-[11px] text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                          <span>
+                            {moveAlert || "Supabase is at its hard limit. New photos go to Cloudinary, and any files still in the bucket are moved there with their addresses."}
+                          </span>
+                        </div>
+                      )}
                       <div>
                         <div className="flex justify-between text-[11px] font-medium text-neutral-600">
                           <span>Bucket Usage (900 MB Safety Limit)</span>
@@ -249,7 +285,32 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
                           />
                         </div>
                         <p className="text-[10px] text-neutral-400 mt-1">
-                          Hard limit at 900 MB. A Supabase upload past this line is rejected instead of filling the 1 GB free tier. New photos go to Cloudinary.
+                          Hard stop at 900 MB. There is no Supabase fallback. Photos go to Cloudinary at any original size.
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] font-medium text-neutral-600">
+                          <span>Database (400 MB Hard Limit)</span>
+                          <span className={`font-bold ${stats.supabase.databaseLimitReached ? "text-red-600" : (stats.supabase.databaseMB || 0) >= 320 ? "text-amber-600" : "text-[#1c1a17]"}`}>
+                            {stats.supabase.databaseError
+                              ? "Unmeasured"
+                              : `${stats.supabase.databaseMB} MB / ${stats.supabase.databaseLimitMB || 400} MB (${(((stats.supabase.databaseMB || 0) / (stats.supabase.databaseLimitMB || 400)) * 100).toFixed(1)}%)`}
+                          </span>
+                        </div>
+                        <div className="w-full bg-neutral-100 rounded-full h-2 mt-1 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-500 ${stats.supabase.databaseLimitReached
+                              ? "bg-red-600"
+                              : (stats.supabase.databaseMB || 0) >= 320
+                                ? "bg-amber-500"
+                                : "bg-emerald-700"
+                              }`}
+                            style={{ width: `${Math.min(100, Math.max(2, ((stats.supabase.databaseMB || 0) / (stats.supabase.databaseLimitMB || 400)) * 100)).toFixed(1)}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-neutral-400 mt-1">
+                          Hard stop at 400 MB. Crossing either limit raises this alert and moves remaining bucket images and addresses to Cloudinary.
                         </p>
                       </div>
 

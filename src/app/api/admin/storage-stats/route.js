@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
-import { listSupabaseStorageFiles, SUPABASE_SAFETY_LIMIT_MB } from "@/lib/storageGuard";
+import { getSupabaseLimitStatus, SUPABASE_SAFETY_LIMIT_MB, SUPABASE_DATABASE_LIMIT_MB } from "@/lib/storageGuard";
 
 export async function GET() {
   let cloudinaryStats = null;
@@ -42,8 +42,8 @@ export async function GET() {
   // 2. Fetch Supabase Bucket & DB Stats
   if (isSupabaseConfigured && supabase) {
     try {
-      const files = await listSupabaseStorageFiles();
-      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      const limits = await getSupabaseLimitStatus();
+      const totalBytes = limits.storageBytes;
 
       const { count: portfolioCount } = await supabase
         .from("portfolio_images")
@@ -57,7 +57,7 @@ export async function GET() {
         .from("categories")
         .select("*", { count: "exact", head: true });
 
-      const storageMB = +(totalBytes / (1024 * 1024)).toFixed(2);
+      const storageMB = limits.storageMB;
       const safetyLimitMB = SUPABASE_SAFETY_LIMIT_MB;
       const safetyLimitPercent = +((storageMB / safetyLimitMB) * 100).toFixed(1);
 
@@ -69,8 +69,13 @@ export async function GET() {
         storageLimitMB: 1000, // 1 GB free tier limit
         safetyLimitMB, // 900 MB hard safety limit
         safetyLimitPercent,
-        safetyLimitReached: storageMB >= safetyLimitMB,
-        fileCount: files.length,
+        safetyLimitReached: limits.storageLimitReached,
+        databaseMB: limits.databaseMB,
+        databaseLimitMB: SUPABASE_DATABASE_LIMIT_MB,
+        databaseLimitReached: limits.databaseLimitReached,
+        databaseError: limits.databaseError,
+        limitReached: limits.limitReached,
+        fileCount: limits.fileCount,
         portfolioRows: portfolioCount || 0,
         galleryRows: galleryCount || 0,
         categoryRows: categoryCount || 0,
