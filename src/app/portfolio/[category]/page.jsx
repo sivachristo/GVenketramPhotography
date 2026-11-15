@@ -4,14 +4,13 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import Gallery from "@/components/Gallery";
 import { getPortfolioCategories, getPortfolioImages } from "@/lib/getPortfolioData";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export async function generateStaticParams() {
   const categories = await getPortfolioCategories();
-  return categories.map((cat) => ({
-    category: cat.toLowerCase(),
-  }));
+  return categories
+    .filter((cat) => cat.toLowerCase() !== "all")
+    .map((cat) => ({
+      category: cat.toLowerCase(),
+    }));
 }
 
 export default async function CategoryPage({ params }) {

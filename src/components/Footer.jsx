@@ -40,8 +40,8 @@ export default function Footer() {
       <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 px-4 sm:px-8 lg:px-12">
         {/* Left Section */}
         <div className="flex flex-col items-center md:items-start space-y-2">
-          <p className="text-xs text-neutral-400">
-            © {new Date().getFullYear()} G VENKET RAM PHOTOGRAPHY. All rights reserved.
+          <p className="text-xs text-neutral-400" suppressHydrationWarning>
+            © 2026 G VENKET RAM PHOTOGRAPHY. All rights reserved.
           </p>
         </div>
 

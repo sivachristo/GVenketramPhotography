@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
-import { DEFAULT_CATEGORIES } from "@/lib/getPortfolioData";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { DEFAULT_CATEGORIES, PORTFOLIO_IMAGE_COLUMNS } from "@/lib/getPortfolioData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+function revalidatePortfolioCache(categoryName) {
+  revalidateTag("portfolio-images", { expire: 0 });
+  revalidateTag("portfolio-categories", { expire: 0 });
+  if (categoryName) {
+    revalidateTag(`portfolio-category-${String(categoryName).toLowerCase()}`, { expire: 0 });
+  }
+  revalidatePath("/", "layout");
+}
 
 export async function GET() {
   try {
@@ -15,7 +24,7 @@ export async function GET() {
       // Query portfolio images from Supabase
       const { data: dbImages, error: imgError } = await supabase
         .from("portfolio_images")
-        .select("*")
+        .select(PORTFOLIO_IMAGE_COLUMNS)
         .order("display_order", { ascending: true });
 
       if (!imgError && dbImages) {
@@ -134,11 +143,11 @@ export async function POST(request) {
     const { data, error } = await supabase
       .from("portfolio_images")
       .insert([newRecord])
-      .select();
+      .select(PORTFOLIO_IMAGE_COLUMNS);
 
     if (error) throw error;
 
-    revalidatePath("/", "layout");
+    revalidatePortfolioCache(targetCat);
 
     return NextResponse.json({
       success: true,
@@ -194,11 +203,11 @@ export async function PATCH(request) {
           query = query.eq("src", targetSrc);
         }
 
-        const { data, error } = await query.select();
+        const { data, error } = await query.select(PORTFOLIO_IMAGE_COLUMNS);
 
         if (error) throw error;
 
-        revalidatePath("/", "layout");
+        revalidatePortfolioCache(updateFields.category_name || data?.[0]?.category_name);
 
         return NextResponse.json({
           success: true,
@@ -239,11 +248,11 @@ export async function PATCH(request) {
         const { data, error } = await supabase
           .from("portfolio_images")
           .insert([newRecord])
-          .select();
+          .select(PORTFOLIO_IMAGE_COLUMNS);
 
         if (error) throw error;
 
-        revalidatePath("/", "layout");
+        revalidatePortfolioCache(targetCat);
 
         return NextResponse.json({
           success: true,
@@ -278,11 +287,11 @@ export async function PATCH(request) {
         const { data: insertedData, error: insertErr } = await supabase
           .from("portfolio_images")
           .insert(recordsToInsert)
-          .select();
+          .select(PORTFOLIO_IMAGE_COLUMNS);
 
         if (insertErr) throw insertErr;
 
-        revalidatePath("/", "layout");
+        revalidatePortfolioCache(targetCat);
 
         return NextResponse.json({
           success: true,
@@ -298,13 +307,15 @@ export async function PATCH(request) {
         }
 
         let fileToDelete = targetSrc;
+        let deletedCategory = null;
         if (!fileToDelete && targetId) {
           const { data: found } = await supabase
             .from("portfolio_images")
-            .select("src")
+            .select("src, category_name")
             .eq("id", targetId)
             .single();
           if (found?.src) fileToDelete = found.src;
+          if (found?.category_name) deletedCategory = found.category_name;
         }
 
         if (fileToDelete && fileToDelete.includes("supabase.co/storage")) {
@@ -330,7 +341,7 @@ export async function PATCH(request) {
 
         if (error) throw error;
 
-        revalidatePath("/", "layout");
+        revalidatePortfolioCache(deletedCategory);
 
         return NextResponse.json({
           success: true,
@@ -369,7 +380,7 @@ export async function PATCH(request) {
         const hasError = results.find((r) => r && r.error);
         if (hasError && hasError.error) throw hasError.error;
 
-        revalidatePath("/", "layout");
+        revalidatePortfolioCache();
 
         return NextResponse.json({
           success: true,

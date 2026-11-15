@@ -1,56 +1,32 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { getSiteSettings, DEFAULT_SITE_SETTINGS } from "@/lib/getSiteSettings";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // In-memory / server cache fallback for settings
 let cachedSettings = {
-  visibility: {
-    artGallery: true,
-    workshop: true,
-  },
-  underConstruction: false,
+  ...DEFAULT_SITE_SETTINGS,
   updatedAt: new Date().toISOString(),
 };
 
 const TABLE = "site_settings";
 
 const COOKIE_NAME = "gvr_construction";
-const COOKIE_OPTS = { path: "/", httpOnly: false, maxAge: 60 * 60 * 24 * 365, sameSite: "lax" };
 
 export async function GET() {
   try {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from(TABLE)
-          .select("*")
-          .eq("id", 1)
-          .single();
-
-        if (!error && data && data.settings) {
-          // Merge: defaults → in-memory → Supabase, so no key is ever lost
-          cachedSettings = {
-            underConstruction: false,
-            ...cachedSettings,
-            ...data.settings,
-          };
-          const res = NextResponse.json({
-            success: true,
-            settings: cachedSettings,
-            source: "supabase",
-          });
-          res.cookies.delete(COOKIE_NAME);
-          return res;
-        }
-      } catch (err) {
-        console.warn("Supabase GET site_settings notice:", err.message);
-      }
+    const { settings, source } = await getSiteSettings();
+    if (source === "supabase" && settings) {
+      cachedSettings = {
+        ...cachedSettings,
+        ...settings,
+      };
     }
 
     const res = NextResponse.json({
       success: true,
       settings: cachedSettings,
-      source: "memory",
+      source,
     });
     res.cookies.delete(COOKIE_NAME);
     return res;
@@ -71,7 +47,26 @@ export async function POST(request) {
     } catch (e) {
       body = {};
     }
-    
+
+    // Load current settings from DB first if configured so we preserve about & contact keys
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: existingData } = await supabase
+          .from(TABLE)
+          .select("settings")
+          .eq("id", 1)
+          .single();
+        if (existingData?.settings) {
+          cachedSettings = {
+            ...cachedSettings,
+            ...existingData.settings,
+          };
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
     const vis = body?.settings?.visibility || body?.visibility || body;
 
     const newVisibility = { ...cachedSettings.visibility };
@@ -113,6 +108,7 @@ export async function POST(request) {
       }
     }
 
+    revalidateTag("site-settings", { expire: 0 });
     revalidatePath("/", "layout");
     revalidatePath("/admin");
 

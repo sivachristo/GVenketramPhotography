@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   getAboutData,
@@ -91,6 +91,8 @@ export async function POST(request) {
 
     // Revalidate public about and admin page caches
     try {
+      revalidateTag("about-data", { expire: 0 });
+      revalidateTag("site-settings", { expire: 0 });
       revalidatePath("/about");
       revalidatePath("/admin");
     } catch (e) {

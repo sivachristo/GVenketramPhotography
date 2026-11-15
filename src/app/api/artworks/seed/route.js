@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { initialArtworksData } from "@/data/artworks";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -77,6 +78,10 @@ export async function POST() {
         { status: 500 }
       );
     }
+
+    revalidateTag("artworks", { expire: 0 });
+    revalidatePath("/art-gallery");
+    revalidatePath("/admin");
 
     return NextResponse.json({
       success: true,

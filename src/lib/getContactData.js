@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import fs from "fs";
 import path from "path";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -41,11 +42,14 @@ export function writeLocalContactData(data) {
 }
 
 export async function getContactData() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("contact-data", "site-settings");
   try {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from("site_settings")
-        .select("*")
+        .select("settings")
         .eq("id", 1)
         .single();
 

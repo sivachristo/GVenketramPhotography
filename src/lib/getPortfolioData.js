@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const DEFAULT_CATEGORIES = [
@@ -13,12 +14,18 @@ export const DEFAULT_CATEGORIES = [
   "Personalities",
 ];
 
+export const PORTFOLIO_IMAGE_COLUMNS =
+  "id, src, width, height, title, description, category_name, display_order";
+
 export async function getPortfolioCategories() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("portfolio-categories");
   try {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from("categories")
-        .select("name")
+        .select("name, display_order")
         .order("display_order", { ascending: true });
 
       if (!error && data && data.length > 0) {
@@ -34,16 +41,19 @@ export async function getPortfolioCategories() {
 }
 
 export async function getPortfolioImages(category) {
+  "use cache";
+  const normalizedCategory = (category || "").toLowerCase();
+  cacheLife("hours");
+  cacheTag("portfolio-images", `portfolio-category-${normalizedCategory}`);
   try {
     if (isSupabaseConfigured && supabase) {
       const categories = await getPortfolioCategories();
-      const matchedCategory = categories.find(
-        (c) => c.toLowerCase() === category.toLowerCase()
-      ) || category;
+      const matchedCategory =
+        categories.find((c) => c.toLowerCase() === normalizedCategory) || category;
 
       const { data, error } = await supabase
         .from("portfolio_images")
-        .select("*")
+        .select(PORTFOLIO_IMAGE_COLUMNS)
         .ilike("category_name", matchedCategory)
         .order("display_order", { ascending: true });
 
@@ -68,13 +78,16 @@ export async function getPortfolioImages(category) {
 }
 
 export async function getPortfolioData() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("portfolio-images", "portfolio-categories");
   try {
     if (isSupabaseConfigured && supabase) {
       const categories = await getPortfolioCategories();
 
       const { data: dbImages, error } = await supabase
         .from("portfolio_images")
-        .select("*")
+        .select(PORTFOLIO_IMAGE_COLUMNS)
         .order("display_order", { ascending: true });
 
       if (!error && dbImages) {

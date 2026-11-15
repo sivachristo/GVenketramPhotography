@@ -1,5 +1,5 @@
+import { Suspense } from "react";
 import { Cormorant_Garamond, Inter } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -25,13 +25,7 @@ export const metadata = {
   description: "High-end fashion, jewellery, art, advertising photography, and fine art prints by G Venket Ram Photography.",
 };
 
-export default async function RootLayout({ children }) {
-  const headersList = await headers();
-  const host = headersList.get("host")?.split(":")[0]?.toLowerCase() || "";
-
-  // Check if current hostname is the live domain
-  const isProduction = host === "gvenketram.in" || host === "www.gvenketram.in";
-
+export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
@@ -43,16 +37,18 @@ export default async function RootLayout({ children }) {
         suppressHydrationWarning
       >
         <SettingsProvider>
-          <ProductionHostGuard isProduction={isProduction}>
-            <CartProvider>
-              <Navbar />
-              <main className="flex-grow flex flex-col">
-                {children}
-              </main>
-              <Footer />
-              <CartDrawer />
-            </CartProvider>
-          </ProductionHostGuard>
+          <Suspense fallback={null}>
+            <ProductionHostGuard>
+              <CartProvider>
+                <Navbar />
+                <main className="flex-grow flex flex-col">
+                  {children}
+                </main>
+                <Footer />
+                <CartDrawer />
+              </CartProvider>
+            </ProductionHostGuard>
+          </Suspense>
         </SettingsProvider>
       </body>
     </html>

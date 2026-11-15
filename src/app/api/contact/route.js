@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   getContactData,
@@ -90,6 +90,8 @@ export async function POST(request) {
 
     // Revalidate paths
     try {
+      revalidateTag("contact-data", { expire: 0 });
+      revalidateTag("site-settings", { expire: 0 });
       revalidatePath("/contact");
       revalidatePath("/admin");
     } catch (e) {

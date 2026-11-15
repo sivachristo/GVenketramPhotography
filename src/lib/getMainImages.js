@@ -1,9 +1,12 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { initialMainImages } from "@/data/mainImages";
 import fs from "fs";
 import path from "path";
 
 const LOCAL_STORAGE_FILE = path.join(process.cwd(), "src", "data", "mainImages.json");
+
+export const MAIN_IMAGE_COLUMNS = "id, src, title, alt, display_order, is_active";
 
 function getLocalStoredImages() {
   try {
@@ -18,11 +21,14 @@ function getLocalStoredImages() {
 }
 
 export async function getMainImages(onlyActive = false) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("main-images");
   try {
     if (isSupabaseConfigured && supabase) {
       let query = supabase
         .from("main_images")
-        .select("*")
+        .select(MAIN_IMAGE_COLUMNS)
         .order("display_order", { ascending: true });
 
       if (onlyActive) {

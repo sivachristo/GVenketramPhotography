@@ -1,62 +1,27 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { artworksData } from "@/data/artworks";
+import {
+  ARTWORK_COLUMNS,
+  getArtworksData,
+  mapArtworkDbRow,
+} from "@/lib/getArtworksData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const TABLE = "art_gallery";
 
-function mapDbRow(item) {
-  return {
-    id: item.id,
-    title: item.title,
-    shortDescription: item.short_description || item.description?.slice(0, 100) || "",
-    description: item.description || "",
-    image: item.image || item.src,
-    width: item.width || 1200,
-    height: item.height || 1600,
-    price: Number(item.price) || 250,
-    type: item.type || "Physical",
-    category: item.category || "Physical Prints",
-    availability: item.availability || "In Stock",
-    quantity: item.quantity || 10,
-    year: item.year || "2025",
-    dimensions: item.dimensions || "24 x 36 inches",
-    display_order: item.display_order || 1,
-    options: item.options || [
-      { id: `opt-${item.id}-1`, label: "Standard Edition", price: Number(item.price) || 250 },
-    ],
-    specs: item.specs || {
-      paper: "Archival Fine Art Paper",
-      printing: "Pigment Print",
-      signature: "Signed Certificate Included",
-      framing: "Unframed",
-    },
-  };
+function revalidateArtworksCache(id) {
+  revalidateTag("artworks", { expire: 0 });
+  revalidatePath("/art-gallery");
+  if (id) {
+    revalidatePath(`/art-gallery/${id}`);
+  }
+  revalidatePath("/admin");
 }
 
 export async function GET() {
-  try {
-    if (isSupabaseConfigured && supabase) {
-      const { data: dbArtworks, error } = await supabase
-        .from(TABLE)
-        .select("*")
-        .order("display_order", { ascending: true });
-
-      if (!error && dbArtworks && dbArtworks.length > 0) {
-        return NextResponse.json({
-          artworks: dbArtworks.map(mapDbRow),
-          source: "supabase",
-        });
-      }
-    }
-  } catch (err) {
-    console.error("Supabase GET art_gallery error:", err);
-  }
-
-  return NextResponse.json({
-    artworks: artworksData,
-    source: "memory",
-  });
+  const result = await getArtworksData();
+  return NextResponse.json(result);
 }
 
 export async function POST(request) {
@@ -208,8 +173,7 @@ export async function POST(request) {
       }
     }
 
-    revalidatePath("/art-gallery", "page");
-    revalidatePath("/admin");
+    revalidateArtworksCache();
 
     return NextResponse.json({
       success: true,
@@ -237,8 +201,8 @@ export async function PATCH(request) {
     let existing = {};
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data } = await supabase.from(TABLE).select("*").eq("id", id).single();
-        if (data) existing = mapDbRow(data);
+        const { data } = await supabase.from(TABLE).select(ARTWORK_COLUMNS).eq("id", id).single();
+        if (data) existing = mapArtworkDbRow(data);
       } catch (err) {
         console.warn("Supabase fetch single artwork notice:", err.message);
       }
@@ -301,9 +265,7 @@ export async function PATCH(request) {
       }
     }
 
-    revalidatePath("/art-gallery");
-    revalidatePath(`/art-gallery/${id}`);
-    revalidatePath("/admin");
+    revalidateArtworksCache(id);
 
     return NextResponse.json({
       success: true,
@@ -359,8 +321,7 @@ export async function DELETE(request) {
       }
     }
 
-    revalidatePath("/art-gallery");
-    revalidatePath("/admin");
+    revalidateArtworksCache(id);
 
     return NextResponse.json({
       success: true,

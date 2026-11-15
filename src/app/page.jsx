@@ -1,24 +1,11 @@
-import { headers } from "next/headers";
 import Gallery from "@/components/Gallery";
 import HeroScrollLink from "@/components/HeroScrollLink";
 import HeroBackgroundSlider from "@/components/HeroBackgroundSlider";
-import UnderConstructionView from "@/components/UnderConstructionView";
 import { getPortfolioData } from "@/lib/getPortfolioData";
 import { getMainImages } from "@/lib/getMainImages";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export default async function Home() {
-  const headersList = await headers();
-  const host = headersList.get("host")?.split(":")[0]?.toLowerCase() || "";
-
-  // If live domain, show Under Construction page
-  if (host === "gvenketram.in" || host === "www.gvenketram.in") {
-    return <UnderConstructionView />;
-  }
-
-  // Otherwise (localhost, staging, preview), show normal website
+  // Data is served from cache; Supabase is only queried when cache is stale
   const [{ categories, portfolioData }, mainImages] = await Promise.all([
     getPortfolioData(),
     getMainImages(true),

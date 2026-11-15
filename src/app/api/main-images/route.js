@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { MAIN_IMAGE_COLUMNS } from "@/lib/getMainImages";
 import { initialMainImages } from "@/data/mainImages";
 import fs from "fs";
 import path from "path";
 
 const LOCAL_STORAGE_FILE = path.join(process.cwd(), "src", "data", "mainImages.json");
+
+function revalidateMainImagesCache() {
+  revalidateTag("main-images", { expire: 0 });
+  revalidatePath("/", "layout");
+}
 
 function readLocalImages() {
   try {
@@ -34,7 +40,7 @@ export async function GET(request) {
     if (isSupabaseConfigured && supabase) {
       let query = supabase
         .from("main_images")
-        .select("*")
+        .select(MAIN_IMAGE_COLUMNS)
         .order("display_order", { ascending: true });
 
       if (activeOnly) {
@@ -81,10 +87,10 @@ export async function POST(request) {
         const { data, error } = await supabase
           .from("main_images")
           .insert([newImage])
-          .select();
+          .select(MAIN_IMAGE_COLUMNS);
 
         if (!error && data) {
-          revalidatePath("/", "layout");
+          revalidateMainImagesCache();
           return NextResponse.json({ success: true, image: data[0], source: "supabase" });
         }
       } catch (err) {
@@ -98,7 +104,7 @@ export async function POST(request) {
     list.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
     writeLocalImages(list);
 
-    revalidatePath("/", "layout");
+    revalidateMainImagesCache();
     return NextResponse.json({ success: true, image: newImage, source: "local" });
   } catch (error) {
     console.error("Error in POST /api/main-images:", error);
@@ -139,7 +145,7 @@ export async function PATCH(request) {
       updated.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
       writeLocalImages(updated);
 
-      revalidatePath("/", "layout");
+      revalidateMainImagesCache();
       return NextResponse.json({ success: true, message: "Main images reordered" });
     }
 
@@ -156,10 +162,10 @@ export async function PATCH(request) {
           .from("main_images")
           .update(editFields)
           .eq("id", id)
-          .select();
+          .select(MAIN_IMAGE_COLUMNS);
 
         if (!error && data) {
-          revalidatePath("/", "layout");
+          revalidateMainImagesCache();
           return NextResponse.json({ success: true, image: data[0], source: "supabase" });
         }
       } catch (err) {
@@ -173,7 +179,7 @@ export async function PATCH(request) {
     if (index !== -1) {
       list[index] = { ...list[index], ...editFields };
       writeLocalImages(list);
-      revalidatePath("/", "layout");
+      revalidateMainImagesCache();
       return NextResponse.json({ success: true, image: list[index], source: "local" });
     }
 
@@ -215,7 +221,7 @@ export async function DELETE(request) {
     const list = readLocalImages().filter((img) => img.id !== targetId);
     writeLocalImages(list);
 
-    revalidatePath("/", "layout");
+    revalidateMainImagesCache();
     return NextResponse.json({ success: true, message: "Main image deleted successfully" });
   } catch (error) {
     console.error("Error in DELETE /api/main-images:", error);

@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { PORTFOLIO_IMAGE_COLUMNS } from "@/lib/getPortfolioData";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function revalidatePortfolioCache(categoryName) {
+  revalidateTag("portfolio-images", { expire: 0 });
+  revalidateTag("portfolio-categories", { expire: 0 });
+  if (categoryName) {
+    revalidateTag(`portfolio-category-${String(categoryName).toLowerCase()}`, { expire: 0 });
+  }
+  revalidatePath("/", "layout");
+}
 
 // PATCH /api/portfolio/[id] - Updates a single record by ID with only the changed fields
 export async function PATCH(request, { params }) {
@@ -42,7 +52,7 @@ export async function PATCH(request, { params }) {
       .from("portfolio_images")
       .update(updateFields)
       .eq("id", id)
-      .select();
+      .select(PORTFOLIO_IMAGE_COLUMNS);
 
     if (error) throw error;
 
@@ -50,7 +60,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: "Portfolio record not found" }, { status: 404 });
     }
 
-    revalidatePath("/", "layout");
+    revalidatePortfolioCache(updateFields.category_name || data?.[0]?.category_name);
 
     return NextResponse.json({
       success: true,
@@ -89,7 +99,7 @@ export async function DELETE(request, { params }) {
     // Query item to check if storage file needs cleanup
     const { data: item } = await supabase
       .from("portfolio_images")
-      .select("src")
+      .select("src, category_name")
       .eq("id", id)
       .single();
 
@@ -126,7 +136,7 @@ export async function DELETE(request, { params }) {
 
     if (error) throw error;
 
-    revalidatePath("/", "layout");
+    revalidatePortfolioCache(item?.category_name);
 
     return NextResponse.json({
       success: true,
@@ -163,7 +173,7 @@ export async function GET(request, { params }) {
 
     const { data, error } = await supabase
       .from("portfolio_images")
-      .select("*")
+      .select(PORTFOLIO_IMAGE_COLUMNS)
       .eq("id", id)
       .single();
 
