@@ -149,7 +149,7 @@ export default function Navbar() {
               </div>
 
               {/* Shopping Cart Button (Shown only when Art Gallery module is enabled) */}
-              {isArtGalleryEnabled && (
+              {isLoaded && isArtGalleryEnabled && (
                 <button
                   onClick={toggleCart}
                   className={cartButtonClass}

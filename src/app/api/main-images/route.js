@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { MAIN_IMAGE_COLUMNS } from "@/lib/getMainImages";
 import { initialMainImages } from "@/data/mainImages";
+import cloudinaryFallback from "@/data/cloudinaryFallback.json";
 import fs from "fs";
 import path from "path";
 
@@ -16,10 +17,17 @@ function revalidateMainImagesCache() {
 function readLocalImages() {
   try {
     if (fs.existsSync(LOCAL_STORAGE_FILE)) {
-      return JSON.parse(fs.readFileSync(LOCAL_STORAGE_FILE, "utf-8"));
+      const parsed = JSON.parse(fs.readFileSync(LOCAL_STORAGE_FILE, "utf-8"));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
     }
   } catch (err) {
     console.error("Error reading local main images:", err);
+  }
+  const cldHeroes = cloudinaryFallback?.tables?.main_images;
+  if (Array.isArray(cldHeroes) && cldHeroes.length > 0) {
+    return cldHeroes;
   }
   return initialMainImages;
 }

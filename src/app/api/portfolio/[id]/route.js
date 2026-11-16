@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { PORTFOLIO_IMAGE_COLUMNS } from "@/lib/getPortfolioData";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured, formatSupabaseError } from "@/lib/supabase";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,7 +70,7 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     console.error("Error in PATCH /api/portfolio/[id]:", error);
     return NextResponse.json(
-      { error: "Failed to patch portfolio record: " + error.message },
+      { error: formatSupabaseError(error, "Failed to patch portfolio record") },
       { status: 500 }
     );
   }
@@ -145,7 +145,7 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error("Error in DELETE /api/portfolio/[id]:", error);
     return NextResponse.json(
-      { error: "Failed to delete portfolio record: " + error.message },
+      { error: formatSupabaseError(error, "Failed to delete portfolio record") },
       { status: 500 }
     );
   }
@@ -183,7 +183,7 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error("Error in GET /api/portfolio/[id]:", error);
     return NextResponse.json(
-      { error: "Failed to fetch portfolio record: " + error.message },
+      { error: formatSupabaseError(error, "Failed to fetch portfolio record") },
       { status: 500 }
     );
   }

@@ -139,7 +139,8 @@ export default function EditPortfolioImageModal({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to save image changes");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save image changes");
       }
 
       const updatedImage = {

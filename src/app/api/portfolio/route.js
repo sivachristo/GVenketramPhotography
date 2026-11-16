@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { DEFAULT_CATEGORIES, PORTFOLIO_IMAGE_COLUMNS } from "@/lib/getPortfolioData";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  DEFAULT_CATEGORIES,
+  PORTFOLIO_IMAGE_COLUMNS,
+  getFallbackPortfolioImages,
+} from "@/lib/getPortfolioData";
+import { supabase, isSupabaseConfigured, formatSupabaseError } from "@/lib/supabase";
 
 function revalidatePortfolioCache(categoryName) {
   revalidateTag("portfolio-images", { expire: 0 });
@@ -65,10 +69,32 @@ export async function GET() {
     console.error("Supabase GET fetch error:", err.message);
   }
 
+  const fallbackImages = getFallbackPortfolioImages();
+  const groupedFallback = DEFAULT_CATEGORIES.map((catName) => ({
+    category: catName,
+    images: fallbackImages
+      .filter(
+        (img) =>
+          img.category_name &&
+          img.category_name.toLowerCase() === catName.toLowerCase()
+      )
+      .map((img, idx) => ({
+        id: img.id,
+        src: img.src,
+        width: img.width || 1600,
+        height: img.height || 1200,
+        title: img.title || "Untitled",
+        description: img.description || "",
+        category: catName,
+        display_order: img.display_order ?? idx + 1,
+        position_num: img.display_order ?? idx + 1,
+      })),
+  }));
+
   return NextResponse.json({
     categories: DEFAULT_CATEGORIES,
-    portfolioData: DEFAULT_CATEGORIES.map((cat) => ({ category: cat, images: [] })),
-    source: "supabase",
+    portfolioData: groupedFallback,
+    source: "cloudinary-fallback",
   });
 }
 
@@ -157,7 +183,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error in POST /api/portfolio:", error);
     return NextResponse.json(
-      { error: "Failed to create portfolio item: " + error.message },
+      { error: formatSupabaseError(error, "Failed to create portfolio item") },
       { status: 500 }
     );
   }
@@ -396,7 +422,7 @@ export async function PATCH(request) {
   } catch (error) {
     console.error("Error patching portfolio data:", error);
     return NextResponse.json(
-      { error: "Failed to patch portfolio data: " + error.message },
+      { error: formatSupabaseError(error, "Failed to patch portfolio data") },
       { status: 500 }
     );
   }

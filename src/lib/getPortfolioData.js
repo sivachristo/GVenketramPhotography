@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import cloudinaryFallback from "@/data/cloudinaryFallback.json";
 
 export const DEFAULT_CATEGORIES = [
   "All",
@@ -16,6 +17,39 @@ export const DEFAULT_CATEGORIES = [
 
 export const PORTFOLIO_IMAGE_COLUMNS =
   "id, src, width, height, title, description, category_name, display_order";
+
+function getFallbackCategories() {
+  const rows = cloudinaryFallback?.tables?.categories;
+  if (Array.isArray(rows) && rows.length > 0) {
+    const sorted = [...rows].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    const names = sorted.map((c) => c.name).filter(Boolean);
+    const withoutAll = names.filter((n) => n.toLowerCase() !== "all");
+    return ["All", ...withoutAll];
+  }
+  return DEFAULT_CATEGORIES;
+}
+
+export function getFallbackPortfolioImages() {
+  const rows = cloudinaryFallback?.tables?.portfolio_images;
+  if (Array.isArray(rows) && rows.length > 0) {
+    return [...rows].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  }
+  return [];
+}
+
+function mapPortfolioImage(img, idx, categoryOverride) {
+  return {
+    id: img.id,
+    src: img.src,
+    width: img.width || 1600,
+    height: img.height || 1200,
+    title: img.title || "Untitled",
+    description: img.description || "",
+    category: categoryOverride || img.category_name,
+    display_order: img.display_order ?? idx + 1,
+    position_num: img.display_order ?? idx + 1,
+  };
+}
 
 export async function getPortfolioCategories() {
   "use cache";
@@ -37,7 +71,7 @@ export async function getPortfolioCategories() {
   } catch (err) {
     console.error("Error fetching getPortfolioCategories from Supabase:", err);
   }
-  return DEFAULT_CATEGORIES;
+  return getFallbackCategories();
 }
 
 export async function getPortfolioImages(category) {
@@ -57,24 +91,19 @@ export async function getPortfolioImages(category) {
         .ilike("category_name", matchedCategory)
         .order("display_order", { ascending: true });
 
-      if (!error && data) {
-        return data.map((img, idx) => ({
-          id: img.id,
-          src: img.src,
-          width: img.width || 1600,
-          height: img.height || 1200,
-          title: img.title || "Untitled",
-          description: img.description || "",
-          category: img.category_name,
-          display_order: img.display_order ?? idx + 1,
-          position_num: img.display_order ?? idx + 1,
-        }));
+      if (!error && data && data.length > 0) {
+        return data.map((img, idx) => mapPortfolioImage(img, idx));
       }
     }
   } catch (err) {
     console.error("Error fetching getPortfolioImages from Supabase:", err);
   }
-  return [];
+
+  // Fallback to Cloudinary snapshot when Supabase is unavailable/restricted
+  const fallbackImages = getFallbackPortfolioImages();
+  return fallbackImages
+    .filter((img) => img.category_name && img.category_name.toLowerCase() === normalizedCategory)
+    .map((img, idx) => mapPortfolioImage(img, idx));
 }
 
 export async function getPortfolioData() {
@@ -90,22 +119,16 @@ export async function getPortfolioData() {
         .select(PORTFOLIO_IMAGE_COLUMNS)
         .order("display_order", { ascending: true });
 
-      if (!error && dbImages) {
+      if (!error && dbImages && dbImages.length > 0) {
         const grouped = categories.map((catName) => ({
           category: catName,
           images: dbImages
-            .filter((img) => img.category_name && img.category_name.toLowerCase() === catName.toLowerCase())
-            .map((img, idx) => ({
-              id: img.id,
-              src: img.src,
-              width: img.width || 1600,
-              height: img.height || 1200,
-              title: img.title || "Untitled",
-              description: img.description || "",
-              category: catName,
-              display_order: img.display_order ?? idx + 1,
-              position_num: img.display_order ?? idx + 1,
-            })),
+            .filter(
+              (img) =>
+                img.category_name &&
+                img.category_name.toLowerCase() === catName.toLowerCase()
+            )
+            .map((img, idx) => mapPortfolioImage(img, idx, catName)),
         }));
 
         return {
@@ -118,8 +141,22 @@ export async function getPortfolioData() {
     console.error("Error fetching getPortfolioData from Supabase:", err);
   }
 
+  // Fallback to Cloudinary snapshot when Supabase is unavailable/restricted
+  const fallbackCategories = getFallbackCategories();
+  const fallbackImages = getFallbackPortfolioImages();
+  const groupedFallback = fallbackCategories.map((catName) => ({
+    category: catName,
+    images: fallbackImages
+      .filter(
+        (img) =>
+          img.category_name &&
+          img.category_name.toLowerCase() === catName.toLowerCase()
+      )
+      .map((img, idx) => mapPortfolioImage(img, idx, catName)),
+  }));
+
   return {
-    categories: DEFAULT_CATEGORIES,
-    portfolioData: DEFAULT_CATEGORIES.map((cat) => ({ category: cat, images: [] })),
+    categories: fallbackCategories,
+    portfolioData: groupedFallback,
   };
 }

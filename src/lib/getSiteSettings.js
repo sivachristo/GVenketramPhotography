@@ -1,14 +1,17 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import cloudinaryFallback from "@/data/cloudinaryFallback.json";
 
 const TABLE = "site_settings";
 
+const fallbackSettingsRow = cloudinaryFallback?.tables?.site_settings?.[0]?.settings;
+
 export const DEFAULT_SITE_SETTINGS = {
   visibility: {
-    artGallery: true,
-    workshop: true,
+    artGallery: fallbackSettingsRow?.visibility?.artGallery ?? true,
+    workshop: fallbackSettingsRow?.visibility?.workshop ?? true,
   },
-  underConstruction: false,
+  underConstruction: fallbackSettingsRow?.underConstruction ?? false,
 };
 
 export async function getSiteSettings() {

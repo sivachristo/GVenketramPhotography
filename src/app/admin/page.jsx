@@ -515,7 +515,13 @@ export default function AdminPage() {
   };
 
   const showToast = (message, type = "success") => {
-    setToastMessage({ message, type });
+    const rawMsg = String(message || "");
+    const cleanMessage =
+      rawMsg.toLowerCase().includes("exceed_cached_egress_quota") ||
+      rawMsg.toLowerCase().includes("service for this project is restricted")
+        ? "superbase limit reached. kindly check"
+        : rawMsg;
+    setToastMessage({ message: cleanMessage, type });
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
@@ -553,7 +559,8 @@ export default function AdminPage() {
         setHasUnsavedChanges(false);
         showToast("Changes saved successfully!");
       } else {
-        showToast("Failed to save changes", "error");
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || "Failed to save changes", "error");
       }
     } catch (err) {
       console.error("Save error:", err);

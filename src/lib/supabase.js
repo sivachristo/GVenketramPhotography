@@ -12,3 +12,16 @@ export const isSupabaseConfigured = Boolean(
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+export function formatSupabaseError(error, defaultPrefix = "Operation failed") {
+  const msg = String(error?.message || error || "");
+  if (
+    msg.toLowerCase().includes("exceed_cached_egress_quota") ||
+    msg.toLowerCase().includes("service for this project is restricted") ||
+    msg.toLowerCase().includes("402")
+  ) {
+    return "superbase limit reached. kindly check";
+  }
+  return defaultPrefix ? `${defaultPrefix}: ${msg}` : msg;
+}
+

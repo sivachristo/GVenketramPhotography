@@ -9,7 +9,7 @@ import { useSettings } from "@/context/SettingsContext";
 export default function Footer() {
   const pathname = usePathname();
   const [isAdminAuth, setIsAdminAuth] = useState(false);
-  const { isArtGalleryEnabled, isWorkshopEnabled } = useSettings();
+  const { isArtGalleryEnabled, isWorkshopEnabled, isLoaded } = useSettings();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -46,7 +46,7 @@ export default function Footer() {
         </div>
 
         {/* Middle Links */}
-        {(isArtGalleryEnabled || isWorkshopEnabled) && (
+        {isLoaded && (isArtGalleryEnabled || isWorkshopEnabled) && (
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-neutral-400">
             {isArtGalleryEnabled && (
               <Link href="/art-gallery" className="hover:text-black transition-colors duration-300">

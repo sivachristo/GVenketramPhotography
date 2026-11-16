@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { artworksData } from "@/data/artworks";
+import cloudinaryFallback from "@/data/cloudinaryFallback.json";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const TABLE = "art_gallery";
@@ -57,6 +58,17 @@ export async function getArtworksData() {
     }
   } catch (err) {
     console.error("Supabase GET art_gallery error:", err);
+  }
+
+  const fallbackRows = cloudinaryFallback?.tables?.art_gallery;
+  if (Array.isArray(fallbackRows) && fallbackRows.length > 0) {
+    const sorted = [...fallbackRows].sort(
+      (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+    return {
+      artworks: sorted.map(mapArtworkDbRow),
+      source: "cloudinary-fallback",
+    };
   }
 
   return {
