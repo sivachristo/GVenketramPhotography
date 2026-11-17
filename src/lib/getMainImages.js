@@ -9,13 +9,23 @@ const LOCAL_STORAGE_FILE = path.join(process.cwd(), "src", "data", "mainImages.j
 
 export const MAIN_IMAGE_COLUMNS = "id, src, title, alt, display_order, is_active";
 
+export function normalizeMainImageDevice(img) {
+  if (!img) return img;
+  const isMobile =
+    img.device === "mobile" || String(img.id || "").startsWith("main-mob-");
+  return {
+    ...img,
+    device: isMobile ? "mobile" : "desktop",
+  };
+}
+
 function getLocalStoredImages() {
   try {
     if (fs.existsSync(LOCAL_STORAGE_FILE)) {
       const content = fs.readFileSync(LOCAL_STORAGE_FILE, "utf-8");
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.map(normalizeMainImageDevice);
       }
     }
   } catch (err) {
@@ -23,9 +33,9 @@ function getLocalStoredImages() {
   }
   const cldHeroes = cloudinaryFallback?.tables?.main_images;
   if (Array.isArray(cldHeroes) && cldHeroes.length > 0) {
-    return cldHeroes;
+    return cldHeroes.map(normalizeMainImageDevice);
   }
-  return initialMainImages;
+  return initialMainImages.map(normalizeMainImageDevice);
 }
 
 export async function getMainImages(onlyActive = false) {
@@ -46,7 +56,7 @@ export async function getMainImages(onlyActive = false) {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
-        return data;
+        return data.map(normalizeMainImageDevice);
       }
     }
   } catch (err) {

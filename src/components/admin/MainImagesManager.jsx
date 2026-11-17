@@ -17,13 +17,24 @@ import {
   Loader2,
   Image as ImageIcon,
   Sparkles,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
+
+function getImageDevice(img) {
+  if (!img) return "desktop";
+  if (img.device === "mobile" || String(img.id || "").startsWith("main-mob-")) {
+    return "mobile";
+  }
+  return "desktop";
+}
 
 export default function MainImagesManager() {
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [activeDeviceTab, setActiveDeviceTab] = useState("desktop"); // 'desktop' | 'mobile'
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -37,6 +48,7 @@ export default function MainImagesManager() {
     src: "",
     display_order: 1,
     is_active: true,
+    device: "desktop",
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -67,6 +79,11 @@ export default function MainImagesManager() {
     fetchMainImages();
   }, []);
 
+  const desktopImages = images.filter((img) => getImageDevice(img) === "desktop");
+  const mobileImages = images.filter((img) => getImageDevice(img) === "mobile");
+  const currentDeviceImages =
+    activeDeviceTab === "mobile" ? mobileImages : desktopImages;
+
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -83,13 +100,17 @@ export default function MainImagesManager() {
     }
   };
 
-  const openAddModal = () => {
+  const openAddModal = (targetDevice = activeDeviceTab) => {
+    const listForDevice =
+      targetDevice === "mobile" ? mobileImages : desktopImages;
+    setActiveDeviceTab(targetDevice);
     setFormData({
       title: "",
       alt: "",
       src: "",
-      display_order: images.length + 1,
+      display_order: listForDevice.length + 1,
       is_active: true,
+      device: targetDevice,
     });
     setSelectedFile(null);
     setPreviewUrl("");
@@ -104,6 +125,7 @@ export default function MainImagesManager() {
       src: img.src || "",
       display_order: img.display_order || 1,
       is_active: img.is_active !== false,
+      device: getImageDevice(img),
     });
     setSelectedFile(null);
     setPreviewUrl(img.src || "");
@@ -133,6 +155,7 @@ export default function MainImagesManager() {
         body: JSON.stringify({
           ...formData,
           src: finalSrc,
+          device: formData.device || activeDeviceTab,
         }),
       });
 
@@ -141,7 +164,11 @@ export default function MainImagesManager() {
         throw new Error(data.error || "Failed to save main image");
       }
 
-      showToast("Main image added successfully");
+      showToast(
+        formData.device === "mobile"
+          ? "Mobile hero image added successfully"
+          : "Desktop & Tablet hero image added successfully"
+      );
       setIsAddModalOpen(false);
       fetchMainImages();
     } catch (err) {
@@ -184,7 +211,7 @@ export default function MainImagesManager() {
         throw new Error(data.error || "Failed to update image");
       }
 
-      showToast("Main image updated successfully");
+      showToast("Hero image updated successfully");
       setEditingImage(null);
       fetchMainImages();
     } catch (err) {
@@ -198,7 +225,6 @@ export default function MainImagesManager() {
   const handleToggleActive = async (img) => {
     try {
       const newStatus = !img.is_active;
-      // Optimistic update
       setImages((prev) =>
         prev.map((item) =>
           item.id === img.id ? { ...item, is_active: newStatus } : item
@@ -215,7 +241,7 @@ export default function MainImagesManager() {
       });
 
       if (!res.ok) {
-        fetchMainImages(); // rollback
+        fetchMainImages();
         showToast("Failed to update status", "error");
       } else {
         showToast(newStatus ? "Image set to Active" : "Image Hidden from Hero");
@@ -228,18 +254,26 @@ export default function MainImagesManager() {
 
   const handleReorder = async (index, direction) => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= images.length) return;
+    if (targetIndex < 0 || targetIndex >= currentDeviceImages.length) return;
 
-    const newImages = [...images];
-    const [moved] = newImages.splice(index, 1);
-    newImages.splice(targetIndex, 0, moved);
+    const newDeviceList = [...currentDeviceImages];
+    const [moved] = newDeviceList.splice(index, 1);
+    newDeviceList.splice(targetIndex, 0, moved);
 
-    // Update display_order locally
-    const reordered = newImages.map((item, idx) => ({
+    const reorderedDeviceList = newDeviceList.map((item, idx) => ({
       ...item,
       display_order: idx + 1,
     }));
-    setImages(reordered);
+
+    const otherDeviceList =
+      activeDeviceTab === "mobile" ? desktopImages : mobileImages;
+
+    const combined =
+      activeDeviceTab === "mobile"
+        ? [...otherDeviceList, ...reorderedDeviceList]
+        : [...reorderedDeviceList, ...otherDeviceList];
+
+    setImages(combined);
 
     try {
       await fetch("/api/main-images", {
@@ -247,7 +281,7 @@ export default function MainImagesManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reorder",
-          items: reordered,
+          items: combined,
         }),
       });
       showToast("Display order updated");
@@ -270,7 +304,7 @@ export default function MainImagesManager() {
         throw new Error(data.error || "Failed to delete image");
       }
 
-      showToast("Main image deleted successfully");
+      showToast("Hero image deleted successfully");
       setDeletingImage(null);
       fetchMainImages();
     } catch (err) {
@@ -297,30 +331,99 @@ export default function MainImagesManager() {
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#141414] border border-[#262626] rounded-xl p-6">
+      {/* Header Bar with Separate Desktop/Tablet and Mobile Upload Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-[#141414] border border-[#262626] rounded-xl p-6">
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-[#888] font-mono mb-1">
             <Sparkles size={14} className="text-[#a39882]" />
-            Homepage Slideshow
+            Homepage Hero Slideshow
           </div>
           <h2 className="text-xl font-light tracking-wide text-neutral-100">
-            Main Images
+            Desktop &amp; Mobile Hero Images
           </h2>
           <p className="text-xs text-neutral-400 mt-1 max-w-xl">
-            Upload, edit, reorder, or delete the full-screen rotating background
-            images shown on the homepage.
+            Manage two dedicated sets of full-screen hero images — one for{" "}
+            <span className="text-neutral-200 font-medium">Desktop &amp; Tablets</span>{" "}
+            and a separate set specifically for{" "}
+            <span className="text-neutral-200 font-medium">Mobile Portrait</span>{" "}
+            so they never overlap.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#f5f2eb] hover:bg-white text-neutral-900 rounded-lg text-xs uppercase tracking-widest font-semibold transition-all shadow-md active:scale-95 cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>Upload Main Image</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openAddModal("desktop")}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f5f2eb] hover:bg-white text-neutral-900 rounded-lg text-xs uppercase tracking-widest font-semibold transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <Monitor size={15} />
+            <span>Upload Desktop / Tablet Hero</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openAddModal("mobile")}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#A97C5B] hover:bg-[#b88967] text-white rounded-lg text-xs uppercase tracking-widest font-semibold transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <Smartphone size={15} />
+            <span>Upload Mobile Hero</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Viewport Switcher Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141414] border border-[#262626] rounded-xl p-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveDeviceTab("desktop")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer ${
+              activeDeviceTab === "desktop"
+                ? "bg-[#f5f2eb] text-neutral-900 shadow-sm"
+                : "text-neutral-400 hover:text-neutral-200 hover:bg-[#1e1e1e]"
+            }`}
+          >
+            <Monitor size={15} />
+            <span>Desktop &amp; Tablet Set</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] ${
+                activeDeviceTab === "desktop"
+                  ? "bg-neutral-900 text-[#f5f2eb]"
+                  : "bg-[#262626] text-neutral-300"
+              }`}
+            >
+              {desktopImages.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDeviceTab("mobile")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer ${
+              activeDeviceTab === "mobile"
+                ? "bg-[#A97C5B] text-white shadow-sm"
+                : "text-neutral-400 hover:text-neutral-200 hover:bg-[#1e1e1e]"
+            }`}
+          >
+            <Smartphone size={15} />
+            <span>Mobile Set</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] ${
+                activeDeviceTab === "mobile"
+                  ? "bg-black/30 text-white"
+                  : "bg-[#262626] text-neutral-300"
+              }`}
+            >
+              {mobileImages.length}
+            </span>
+          </button>
+        </div>
+
+        <div className="text-[11px] text-neutral-400 px-2">
+          {activeDeviceTab === "desktop"
+            ? "Shown exclusively on Desktop & Tablet viewports (≥ 768px)"
+            : "Shown exclusively on Mobile viewports (< 768px)"}
+        </div>
       </div>
 
       {/* Main Images Grid */}
@@ -328,30 +431,39 @@ export default function MainImagesManager() {
         <div className="flex flex-col items-center justify-center py-24 bg-[#141414] border border-[#262626] rounded-xl">
           <Loader2 size={32} className="animate-spin text-[#888] mb-3" />
           <p className="text-xs tracking-widest uppercase text-neutral-400">
-            Loading Main Images...
+            Loading Hero Images...
           </p>
         </div>
-      ) : images.length === 0 ? (
+      ) : currentDeviceImages.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-[#141414] border border-[#262626] rounded-xl text-center px-4">
-          <ImageIcon size={42} className="text-neutral-600 mb-3" />
+          {activeDeviceTab === "mobile" ? (
+            <Smartphone size={42} className="text-neutral-600 mb-3" />
+          ) : (
+            <Monitor size={42} className="text-neutral-600 mb-3" />
+          )}
           <h3 className="text-sm uppercase tracking-wider text-neutral-300 font-medium">
-            No Main Images Found
+            {activeDeviceTab === "mobile"
+              ? "No Mobile Hero Images Found"
+              : "No Desktop / Tablet Hero Images Found"}
           </h3>
           <p className="text-xs text-neutral-500 max-w-sm mt-1 mb-5">
-            Get started by uploading or adding high-resolution photography for
-            the homepage.
+            {activeDeviceTab === "mobile"
+              ? "Upload vertical / portrait photography tailored specifically for mobile screens."
+              : "Upload landscape photography tailored for desktop and tablet screens."}
           </p>
           <button
             type="button"
-            onClick={openAddModal}
-            className="px-4 py-2 bg-[#f5f2eb] text-neutral-900 rounded text-xs uppercase tracking-wider font-semibold hover:bg-white transition"
+            onClick={() => openAddModal(activeDeviceTab)}
+            className="px-4 py-2 bg-[#f5f2eb] text-neutral-900 rounded text-xs uppercase tracking-wider font-semibold hover:bg-white transition cursor-pointer"
           >
-            Add First Main Image
+            {activeDeviceTab === "mobile"
+              ? "Add First Mobile Hero Image"
+              : "Add First Desktop Hero Image"}
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {images.map((img, index) => (
+          {currentDeviceImages.map((img, index) => (
             <div
               key={img.id || index}
               className={`group relative bg-[#171717] border rounded-xl overflow-hidden transition-all duration-300 flex flex-col justify-between ${
@@ -361,7 +473,11 @@ export default function MainImagesManager() {
               }`}
             >
               {/* Image Preview Container */}
-              <div className="relative aspect-4/3 w-full bg-[#0d0d0d] overflow-hidden">
+              <div
+                className={`relative w-full bg-[#0d0d0d] overflow-hidden ${
+                  activeDeviceTab === "mobile" ? "aspect-3/4" : "aspect-4/3"
+                }`}
+              >
                 <Image
                   src={img.src}
                   alt={img.alt || img.title || "Main Image"}
@@ -370,14 +486,29 @@ export default function MainImagesManager() {
                   className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />
 
-                {/* Dark Vignette Overlay */}
+                {/* Dark Vignette Overlay (Admin Card UI Only) */}
                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 
-                {/* Order & Status Badges */}
+                {/* Order, Device & Status Badges */}
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-                  <span className="px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-md text-[10px] font-mono tracking-wider uppercase text-neutral-200 border border-white/10">
-                    #{index + 1}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-md text-[10px] font-mono tracking-wider uppercase text-neutral-200 border border-white/10">
+                      #{index + 1}
+                    </span>
+                    <span className="px-2 py-1 bg-black/70 backdrop-blur-md rounded-md text-[10px] tracking-wider uppercase text-neutral-300 border border-white/10 flex items-center gap-1">
+                      {activeDeviceTab === "mobile" ? (
+                        <>
+                          <Smartphone size={11} />
+                          <span>Mobile</span>
+                        </>
+                      ) : (
+                        <>
+                          <Monitor size={11} />
+                          <span>Desktop</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
 
                   <button
                     type="button"
@@ -421,7 +552,7 @@ export default function MainImagesManager() {
                   <button
                     type="button"
                     onClick={() => handleReorder(index, "down")}
-                    disabled={index === images.length - 1}
+                    disabled={index === currentDeviceImages.length - 1}
                     title="Move later in rotation"
                     className="p-1.5 bg-black/80 hover:bg-neutral-800 text-neutral-200 disabled:opacity-30 disabled:pointer-events-none rounded border border-white/10 transition cursor-pointer"
                   >
@@ -472,11 +603,23 @@ export default function MainImagesManager() {
           <div className="relative w-full max-w-lg bg-[#181818] border border-[#2e2e2e] rounded-2xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#2a2a2a] pb-4">
               <div>
-                <h3 className="text-base font-medium text-neutral-100 uppercase tracking-wider">
-                  Add Main Image
+                <h3 className="text-base font-medium text-neutral-100 uppercase tracking-wider flex items-center gap-2">
+                  {formData.device === "mobile" ? (
+                    <>
+                      <Smartphone size={17} className="text-[#A97C5B]" />
+                      <span>Upload Mobile Hero Image</span>
+                    </>
+                  ) : (
+                    <>
+                      <Monitor size={17} className="text-[#a39882]" />
+                      <span>Upload Desktop / Tablet Hero Image</span>
+                    </>
+                  )}
                 </h3>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Upload an image file or supply an image URL
+                  {formData.device === "mobile"
+                    ? "Displayed exclusively on mobile phones (< 768px)"
+                    : "Displayed exclusively on desktops & tablets (≥ 768px)"}
                 </p>
               </div>
               <button
@@ -489,6 +632,51 @@ export default function MainImagesManager() {
             </div>
 
             <form onSubmit={handleSaveAdd} className="space-y-4">
+              {/* Target Viewport Selector */}
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-neutral-400 font-medium mb-1.5">
+                  Target Viewport Set
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        device: "desktop",
+                        display_order: desktopImages.length + 1,
+                      }))
+                    }
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs uppercase tracking-wider font-semibold border transition cursor-pointer ${
+                      formData.device === "desktop"
+                        ? "bg-[#f5f2eb] text-neutral-900 border-[#f5f2eb]"
+                        : "bg-[#121212] text-neutral-400 border-[#2e2e2e] hover:text-neutral-200"
+                    }`}
+                  >
+                    <Monitor size={14} />
+                    <span>Desktop &amp; Tablet</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        device: "mobile",
+                        display_order: mobileImages.length + 1,
+                      }))
+                    }
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs uppercase tracking-wider font-semibold border transition cursor-pointer ${
+                      formData.device === "mobile"
+                        ? "bg-[#A97C5B] text-white border-[#A97C5B]"
+                        : "bg-[#121212] text-neutral-400 border-[#2e2e2e] hover:text-neutral-200"
+                    }`}
+                  >
+                    <Smartphone size={14} />
+                    <span>Mobile Only</span>
+                  </button>
+                </div>
+              </div>
+
               {/* File Upload / Dropzone */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-neutral-400 font-medium mb-1.5">
@@ -506,7 +694,13 @@ export default function MainImagesManager() {
                     className="hidden"
                   />
                   {previewUrl ? (
-                    <div className="relative w-full aspect-16/9 rounded-lg overflow-hidden bg-black/40">
+                    <div
+                      className={`relative w-full rounded-lg overflow-hidden bg-black/40 ${
+                        formData.device === "mobile"
+                          ? "max-w-[220px] aspect-9/16 mx-auto"
+                          : "aspect-16/9"
+                      }`}
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={previewUrl}
@@ -525,7 +719,10 @@ export default function MainImagesManager() {
                         <Upload size={20} />
                       </div>
                       <p className="text-xs text-neutral-300 font-medium">
-                        Click to upload an image from device
+                        Click to upload{" "}
+                        {formData.device === "mobile"
+                          ? "a mobile portrait image"
+                          : "a desktop / tablet landscape image"}
                       </p>
                       <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
                         Saved at 9 MB.
@@ -542,7 +739,7 @@ export default function MainImagesManager() {
                 </label>
                 <input
                   type="url"
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="https://res.cloudinary.com/..."
                   value={formData.src}
                   onChange={(e) => {
                     setFormData({ ...formData, src: e.target.value });
@@ -593,7 +790,8 @@ export default function MainImagesManager() {
                     Active in Slideshow
                   </span>
                   <span className="text-[11px] text-neutral-500">
-                    Include this image in the rotating hero background
+                    Include this image in the rotating{" "}
+                    {formData.device === "mobile" ? "mobile" : "desktop & tablet"} hero
                   </span>
                 </div>
                 <input
@@ -637,7 +835,7 @@ export default function MainImagesManager() {
             <div className="flex items-center justify-between border-b border-[#2a2a2a] pb-4">
               <div>
                 <h3 className="text-base font-medium text-neutral-100 uppercase tracking-wider">
-                  Edit Main Image
+                  Edit {formData.device === "mobile" ? "Mobile" : "Desktop / Tablet"} Hero Image
                 </h3>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   Update title, metadata, or replace the photo
@@ -658,7 +856,13 @@ export default function MainImagesManager() {
                 <label className="block text-xs uppercase tracking-wider text-neutral-400 font-medium mb-1.5">
                   Current Image
                 </label>
-                <div className="relative w-full aspect-16/9 rounded-xl overflow-hidden bg-black/50 border border-[#2a2a2a] group">
+                <div
+                  className={`relative w-full rounded-xl overflow-hidden bg-black/50 border border-[#2a2a2a] group ${
+                    formData.device === "mobile"
+                      ? "max-w-[220px] aspect-9/16 mx-auto"
+                      : "aspect-16/9"
+                  }`}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl || editingImage.src}
@@ -786,7 +990,7 @@ export default function MainImagesManager() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-100">
-                  Delete Main Image?
+                  Delete Hero Image?
                 </h3>
                 <p className="text-xs text-neutral-400 mt-1">
                   Are you sure you want to remove &quot;{deletingImage.title}&quot; from

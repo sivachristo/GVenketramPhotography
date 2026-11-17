@@ -190,6 +190,16 @@ function canvasToBlob(canvas, type, quality) {
  */
 export async function prepareHeroImage(file) {
   const name = file.name || "hero.jpg";
+  const isJpeg =
+    file.type === "image/jpeg" ||
+    file.type === "image/jpg" ||
+    /\.jpe?g$/i.test(name);
+
+  // If the original JPEG is already near 9 MB (between 7.5 MB and 9 MB), keep the untouched master
+  if (isJpeg && file.size >= 7.5 * 1024 * 1024 && file.size <= HERO_TARGET_BYTES) {
+    return file;
+  }
+
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise((resolve, reject) => {
@@ -230,8 +240,8 @@ export async function prepareHeroImage(file) {
       }
 
       let low = 0.4;
-      let high = 0.98;
-      for (let i = 0; i < 10; i++) {
+      let high = 1.0;
+      for (let i = 0; i < 12; i++) {
         const quality = (low + high) / 2;
         const blob = await encode(edge, quality);
         if (!blob || blob.size > HERO_TARGET_BYTES) {
@@ -248,7 +258,7 @@ export async function prepareHeroImage(file) {
     canvas.height = 0;
 
     if (!best) {
-      throw new Error("Could not compress this hero image to 9 MB.");
+      throw new Error("Could not compress this hero image to 9 MB. It was not saved to Supabase.");
     }
 
     const base = name.replace(/\.[^.]+$/, "") || "hero";
@@ -259,11 +269,17 @@ export async function prepareHeroImage(file) {
 }
 
 /**
- * Sends a hero file directly to Cloudinary. The Next.js upload route is capped
- * near 4.5 MB, which would force a heavier compress than the 9 MB target.
+ * Sends a hero file directly to Cloudinary (never touches Supabase Storage).
+ * The Next.js upload route is capped near 4.5 MB, which would force a heavier
+ * compress than the 9 MB target.
  */
 export async function uploadHeroImage(file) {
   const payload = await prepareHeroImage(file);
+  if (payload.size > 10 * 1024 * 1024) {
+    throw new Error(
+      "Hero image exceeds Cloudinary's 10 MB limit after encoding. It was not saved to Supabase."
+    );
+  }
   const signRes = await fetch("/api/admin/cloudinary-sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -271,7 +287,7 @@ export async function uploadHeroImage(file) {
   });
   const sign = await signRes.json().catch(() => ({}));
   if (!signRes.ok || !sign.signature) {
-    throw new Error(sign.error || "Could not start the Cloudinary upload.");
+    throw new Error(sign.error || "Could not start the Cloudinary upload. Image was not saved to Supabase.");
   }
 
   const body = new FormData();
@@ -287,7 +303,7 @@ export async function uploadHeroImage(file) {
   });
   const data = await uploadRes.json().catch(() => ({}));
   if (!uploadRes.ok || !data.secure_url) {
-    throw new Error(data?.error?.message || "Cloudinary rejected this hero image.");
+    throw new Error(data?.error?.message || "Cloudinary rejected this hero image. It was not saved to Supabase.");
   }
   return data.secure_url;
 }

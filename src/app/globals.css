@@ -80,7 +80,11 @@ html.hero-scrollbar-hidden {
 }
 
 @utility text-shadow-editorial {
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75), 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+@utility icon-shadow-editorial {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
 /* Lightbox Image Preview - seamless styling matching the header background #E2DDD3 */
