@@ -8,12 +8,18 @@ import Sidebar from "./Sidebar";
 import AdminSettingsModal from "@/components/admin/AdminSettingsModal";
 import { useCart } from "@/context/CartContext";
 import { useSettings } from "@/context/SettingsContext";
+import { getBackupTrackerState } from "@/utils/backupTracker";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminAuth, setIsAdminAuth] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [backupTracker, setBackupTracker] = useState({
+    uploadsSinceBackup: 0,
+    lastBackupAt: null,
+    needsBackup: false,
+  });
   const pathname = usePathname();
   const { cartCount, toggleCart } = useCart();
   const { isArtGalleryEnabled, isWorkshopEnabled, isLoaded } = useSettings();
@@ -31,14 +37,22 @@ export default function Navbar() {
     if (typeof window !== "undefined") {
       const checkAuth = () => {
         setIsAdminAuth(sessionStorage.getItem("gvr_admin_auth") === "true");
+        setBackupTracker(getBackupTrackerState());
+      };
+      const handleOpenAdminSettings = () => {
+        setIsSettingsOpen(true);
       };
       checkAuth();
       const interval = setInterval(checkAuth, 300);
       window.addEventListener("admin-auth-change", checkAuth);
+      window.addEventListener("gvr-backup-tracker-change", checkAuth);
+      window.addEventListener("gvr-open-admin-settings", handleOpenAdminSettings);
       window.addEventListener("storage", checkAuth);
       return () => {
         clearInterval(interval);
         window.removeEventListener("admin-auth-change", checkAuth);
+        window.removeEventListener("gvr-backup-tracker-change", checkAuth);
+        window.removeEventListener("gvr-open-admin-settings", handleOpenAdminSettings);
         window.removeEventListener("storage", checkAuth);
       };
     }
@@ -179,11 +193,20 @@ export default function Navbar() {
               {/* Settings Button */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-semibold transition-colors cursor-pointer px-2 py-1 rounded hover:bg-neutral-200/50"
-                title="Site Settings & Visibility"
+                className="relative flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-600 hover:text-black font-semibold transition-colors cursor-pointer px-2.5 py-1 rounded hover:bg-neutral-200/50"
+                title={
+                  backupTracker.needsBackup
+                    ? `${backupTracker.uploadsSinceBackup} new photos uploaded — click to download DB backup`
+                    : "Site Settings & DB Backup"
+                }
               >
                 <Sliders size={14} />
                 <span className="hidden sm:inline">Settings</span>
+                {backupTracker.needsBackup && (
+                  <span className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold tracking-wider animate-pulse">
+                    <span>Backup ({backupTracker.uploadsSinceBackup})</span>
+                  </span>
+                )}
               </button>
 
               <div className="h-4 w-px bg-[#d8d3c5]" />

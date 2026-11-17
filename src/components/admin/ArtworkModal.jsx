@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RotateCcw } from "lucide-react";
 import { uploadSingleImage } from "@/lib/clientUpload";
+import { recordUploadedImages } from "@/utils/backupTracker";
 
 export default function ArtworkModal({
   isOpen,
@@ -174,6 +175,7 @@ export default function ArtworkModal({
         if (res.ok) {
           const data = await res.json();
           if (onSuccess && data.artwork) onSuccess(data.artwork, false);
+          recordUploadedImages(1);
           if (showToast) showToast(`Created artwork "${formData.title}"!`);
           handleClose();
         } else {

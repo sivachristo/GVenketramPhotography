@@ -45,6 +45,7 @@ import {
   Square,
 } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
+import { getBackupTrackerState, markBackupCompleted } from "@/utils/backupTracker";
 import AddPortfolioImageModal from "@/components/admin/AddPortfolioImageModal";
 import EditPortfolioImageModal from "@/components/admin/EditPortfolioImageModal";
 import ArtworkModal from "@/components/admin/ArtworkModal";
@@ -120,6 +121,13 @@ export default function AdminPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [backupTracker, setBackupTracker] = useState({
+    uploadsSinceBackup: 0,
+    lastBackupAt: null,
+    needsBackup: false,
+  });
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
+  const [backupBannerDismissed, setBackupBannerDismissed] = useState(false);
 
   // Full View Image Preview Modal State
   const [previewImage, setPreviewImage] = useState(null);
@@ -276,7 +284,47 @@ export default function AdminPage() {
   useEffect(() => {
     fetchPortfolioData();
     fetchArtworksData();
+    const syncTracker = () => {
+      const next = getBackupTrackerState();
+      setBackupTracker(next);
+      if (next.needsBackup) {
+        setBackupBannerDismissed(false);
+      }
+    };
+    syncTracker();
+    window.addEventListener("gvr-backup-tracker-change", syncTracker);
+    window.addEventListener("storage", syncTracker);
+    return () => {
+      window.removeEventListener("gvr-backup-tracker-change", syncTracker);
+      window.removeEventListener("storage", syncTracker);
+    };
   }, []);
+
+  const handleQuickDownloadBackup = async () => {
+    try {
+      setIsDownloadingBackup(true);
+      const res = await fetch("/api/admin/backup-db?download=true");
+      if (!res.ok) throw new Error("Failed to download database backup");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `gvenketram_db_backup_${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      markBackupCompleted();
+      setBackupTracker(getBackupTrackerState());
+      showToast("Database backup downloaded! Upload counter reset.");
+    } catch (err) {
+      showToast(err.message || "Could not download backup", "error");
+    } finally {
+      setIsDownloadingBackup(false);
+    }
+  };
 
   const fetchPortfolioData = async () => {
     setIsLoadingPortfolio(true);
@@ -1115,6 +1163,57 @@ export default function AdminPage() {
 
       {/* Main Admin Workspace */}
       <main className="w-full px-4 sm:px-8 py-8">
+
+        {/* Friendly DB Backup Reminder Banner (Triggers after 15+ new image uploads) */}
+        <AnimatePresence>
+          {backupTracker.needsBackup && !backupBannerDismissed && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-950">
+                      Backup Reminder · {backupTracker.uploadsSinceBackup} New Photos Uploaded
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider bg-amber-200/80 text-amber-900">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 mt-1">
+                    You&apos;ve added {backupTracker.uploadsSinceBackup} new photos since your last database backup. Download a quick backup copy now (or anytime from <strong>Settings → Download DB Backup</strong>) to keep your latest records safe.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleQuickDownloadBackup}
+                  disabled={isDownloadingBackup}
+                  className="px-4 py-2 bg-[#1c1a17] hover:bg-black text-[#f5f2eb] text-xs uppercase tracking-widest font-semibold rounded-lg flex items-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-60"
+                >
+                  <Download size={14} />
+                  <span>{isDownloadingBackup ? "Preparing..." : "Download DB Backup"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBackupBannerDismissed(true)}
+                  className="p-2 text-amber-800 hover:text-amber-950 hover:bg-amber-200/50 rounded-lg transition-colors cursor-pointer"
+                  title="Remind me later"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {mainTab === "art-gallery" ? (
           /* ART GALLERY MANAGEMENT VIEW */

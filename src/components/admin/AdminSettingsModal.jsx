@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle, Download } from "lucide-react";
+import { X, Sliders, Eye, Image as ImageIcon, Ticket, CheckCircle2, HardDrive, Cloud, Database, RefreshCw, Construction, AlertTriangle, Download, ShieldCheck } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
+import { getBackupTrackerState, markBackupCompleted } from "@/utils/backupTracker";
 
 export default function AdminSettingsModal({ isOpen, onClose }) {
   const { isArtGalleryEnabled, isWorkshopEnabled, updateVisibility, isUnderConstruction, updateUnderConstruction } = useSettings();
@@ -13,7 +14,43 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
   const [migrating, setMigrating] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState(null);
   const [moveAlert, setMoveAlert] = useState(null);
+  const [backupState, setBackupState] = useState({
+    uploadsSinceBackup: 0,
+    lastBackupAt: null,
+    needsBackup: false,
+  });
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [backupToast, setBackupToast] = useState(null);
   const forcedMoveStarted = useRef(false);
+
+  const handleDownloadBackup = async () => {
+    try {
+      setDownloadingBackup(true);
+      setBackupToast(null);
+      const res = await fetch("/api/admin/backup-db?download=true");
+      if (!res.ok) {
+        throw new Error("Could not generate database backup.");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `gvenketram_db_backup_${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      markBackupCompleted();
+      setBackupState(getBackupTrackerState());
+      setBackupToast("Database backup downloaded! Upload counter has been reset.");
+    } catch (err) {
+      setBackupToast(err.message || "Failed to download backup.");
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
 
   const fetchStats = async () => {
     setLoading(true);
@@ -94,8 +131,10 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) {
       forcedMoveStarted.current = false;
+      setBackupToast(null);
       return;
     }
+    setBackupState(getBackupTrackerState());
     fetchStats();
   }, [isOpen]);
 
@@ -158,6 +197,84 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
 
           {/* Body */}
           <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+
+            {/* 0. Database Backup & Safety Snapshot Section */}
+            <div
+              className={`p-4 rounded-xl border transition-all space-y-3 ${
+                backupState.needsBackup
+                  ? "bg-amber-50 border-amber-300 shadow-xs"
+                  : "bg-white border-[#e6e2d8] shadow-2xs"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`p-2.5 rounded-lg shrink-0 ${
+                      backupState.needsBackup
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {backupState.needsBackup ? (
+                      <AlertTriangle size={18} />
+                    ) : (
+                      <ShieldCheck size={18} />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-[#1c1a17] uppercase tracking-wider">
+                        Database Backup Snapshot
+                      </span>
+                      {backupState.needsBackup ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider bg-amber-200 text-amber-900 border border-amber-400">
+                          {backupState.uploadsSinceBackup} New Images Uploaded — Backup Recommended
+                        </span>
+                      ) : backupState.uploadsSinceBackup > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] uppercase font-semibold tracking-wider bg-neutral-100 text-neutral-600 border border-neutral-300">
+                          {backupState.uploadsSinceBackup} new image{backupState.uploadsSinceBackup > 1 ? "s" : ""} since last backup
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Up to Date
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">
+                      {backupState.needsBackup
+                        ? `You've uploaded ${backupState.uploadsSinceBackup} new images recently. Download a quick backup copy to keep your portfolio records safe.`
+                        : "Download a complete snapshot of all portfolio categories, image links, hero slides, and artworks anytime."}
+                    </p>
+                    {backupState.lastBackupAt && (
+                      <p className="text-[10px] text-neutral-400 mt-1">
+                        Last downloaded: {new Date(backupState.lastBackupAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadBackup}
+                  disabled={downloadingBackup}
+                  className={`px-4 py-2.5 rounded-lg text-xs uppercase tracking-widest font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 shadow-xs ${
+                    backupState.needsBackup
+                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      : "bg-[#1c1a17] hover:bg-black text-[#f5f2eb]"
+                  } disabled:opacity-60`}
+                >
+                  <Download size={14} className={downloadingBackup ? "animate-bounce" : ""} />
+                  <span>{downloadingBackup ? "Preparing..." : "Download DB Backup"}</span>
+                </button>
+              </div>
+
+              {backupToast && (
+                <div className="flex items-center gap-2 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                  <span>{backupToast}</span>
+                </div>
+              )}
+            </div>
 
             {/* 1. Storage & Quota Health Section */}
             <div className="space-y-4">
@@ -327,14 +444,15 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
 
                       {/* DB Backup Download Action */}
                       <div className="pt-2 border-t border-neutral-100">
-                        <a
-                          href="/api/admin/backup-db?download=true"
-                          download
-                          className="w-full py-1.5 px-3 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-[#1c1a17] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-neutral-200"
+                        <button
+                          type="button"
+                          onClick={handleDownloadBackup}
+                          disabled={downloadingBackup}
+                          className="w-full py-1.5 px-3 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-[#1c1a17] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-neutral-200 disabled:opacity-50"
                         >
                           <Download size={12} className="text-neutral-600" />
-                          <span>Download DB Backup (JSON)</span>
-                        </a>
+                          <span>{downloadingBackup ? "Downloading Backup..." : "Download DB Backup (JSON)"}</span>
+                        </button>
                       </div>
 
                       {/* Migration to Cloudinary to reclaim Supabase Quota */}

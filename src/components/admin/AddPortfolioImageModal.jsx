@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Image as ImageIcon, Trash2, CheckCircle2, AlertCircle, Coffee, Loader2 } from "lucide-react";
 import { uploadMultipleImages } from "@/lib/clientUpload";
+import { recordUploadedImages } from "@/utils/backupTracker";
 
 export default function AddPortfolioImageModal({
   isOpen,
@@ -201,6 +202,8 @@ export default function AddPortfolioImageModal({
           position_num: item.display_order ?? idx + 1,
         }));
 
+        recordUploadedImages(uploadedFiles.length);
+
         if (failedUploads.length > 0) {
           if (showToast) {
             showToast(`${uploadedFiles.length} photo(s) uploaded. ${failedUploads.length} photo(s) failed.`, "warning");
@@ -310,6 +313,8 @@ export default function AddPortfolioImageModal({
         description: "",
       });
       setSelectedFiles([]);
+
+      recordUploadedImages(1);
 
       if (onSuccess) {
         onSuccess([createdImageObj], targetCategory);

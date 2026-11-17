@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { uploadHeroImage } from "@/lib/clientUpload";
+import { recordUploadedImages } from "@/utils/backupTracker";
 import {
   Upload,
   Plus,
@@ -169,6 +170,7 @@ export default function MainImagesManager() {
           ? "Mobile hero image added successfully"
           : "Desktop & Tablet hero image added successfully"
       );
+      recordUploadedImages(1);
       setIsAddModalOpen(false);
       fetchMainImages();
     } catch (err) {
