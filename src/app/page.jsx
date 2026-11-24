@@ -38,7 +38,7 @@ export default async function Home() {
       </div>
 
       {/* Main Curated Gallery Section (Tightly following the Hero) */}
-      <div id="portfolio" className="w-full px-4 sm:px-8 lg:px-12 py-16 scroll-mt-6">
+      <div id="portfolio" className="w-full px-4 sm:px-8 lg:px-12 py-16 scroll-mt-16">
         {/* Gallery System */}
         <Gallery
           categories={galleryCategories}

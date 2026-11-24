@@ -156,7 +156,8 @@ export default function Gallery({ initialCategory = "All", categories, allImages
         </div>
       )}
 
-      {/* Album Grid Container */}
+      {/* Album Grid Container — min-h-screen prevents Safari from jumping up when AnimatePresence unmounts old category */}
+      <div className="min-h-[80vh] w-full">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeCategory}
@@ -214,6 +215,7 @@ export default function Gallery({ initialCategory = "All", categories, allImages
           )}
         </motion.div>
       </AnimatePresence>
+      </div>
 
       {/* Lightbox Modal */}
       <Lightbox

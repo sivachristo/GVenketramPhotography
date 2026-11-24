@@ -9,7 +9,9 @@ export default function HeroScrollLink() {
     e.preventDefault();
     const element = document.getElementById("portfolio");
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      const headerOffset = 64; // Matches h-16 sticky navbar height
+      const top = element.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top, behavior: "smooth" });
     }
   };
 
