@@ -108,7 +108,7 @@ export default function HeroBackgroundSlider({ images }) {
 
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % slideImages.length);
-    }, 8000); // 8-second interval
+    }, 5000); // 6-second interval (decreased by 2 seconds from 8s)
 
     return () => clearInterval(timer);
   }, [slideImages.length, safeIndex]);

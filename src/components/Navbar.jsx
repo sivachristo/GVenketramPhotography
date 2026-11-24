@@ -69,8 +69,12 @@ export default function Navbar() {
   const isHome = pathname === "/";
   const isTransparent = isHome && !isScrolled;
 
-  const headerClass = isTransparent
-    ? "absolute top-0 z-40 w-full bg-transparent transition-all duration-300"
+  const headerClass = isHome
+    ? `fixed top-0 left-0 right-0 z-40 w-full transition-all duration-300 ${
+        isTransparent
+          ? "bg-transparent border-b border-transparent"
+          : "border-b border-[#d8d3c5] bg-[#E2DDD3] shadow-xs"
+      }`
     : "sticky top-0 z-40 w-full border-b border-[#d8d3c5] bg-[#E2DDD3] transition-all duration-300 shadow-xs";
 
   const logoTextClass = isTransparent
